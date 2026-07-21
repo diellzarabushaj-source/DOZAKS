@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dozaks-shell-v4';
+const CACHE_NAME = 'dozaks-shell-v5';
 const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/db-client.js', '/drug-card-sync.js', '/ux.js', '/product-catalog.js'];
 
 self.addEventListener('install', (event) => {
