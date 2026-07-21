@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "builds": [
+    { "src": "api/*.js", "use": "@vercel/node" },
     { "src": "index.html", "use": "@vercel/static" },
     { "src": "app.css", "use": "@vercel/static" },
     { "src": "app.js", "use": "@vercel/static" },
@@ -12,10 +13,6 @@
     { "src": "sw.js", "use": "@vercel/static" }
   ],
   "rewrites": [
-    {
-      "source": "/api/product-catalog",
-      "destination": "https://mjeku-ks.netlify.app/api/product-catalog"
-    },
     {
       "source": "/api/clinical-data",
       "destination": "https://mjeku-ks.netlify.app/api/clinical-data"
