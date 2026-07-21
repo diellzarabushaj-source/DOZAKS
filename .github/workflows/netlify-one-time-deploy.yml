@@ -1,0 +1,25 @@
+name: One-time Netlify production deploy
+
+on:
+  push:
+    branches:
+      - ops/netlify-deploy-20260721
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout current main source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Deploy mjeku-ks to Netlify
+        run: >-
+          npx -y @netlify/mcp@latest
+          --site-id 8b459b64-b5ff-4352-8a4c-d7203e292149
+          --proxy-path "https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..K9lKR6zFhzAuWK9X.f2Wp9Z0_-AOUKnBc-7KBur-AtWtjAsp9Mp0-Ctv-1sVSgjrkqIaamt8iVHJeVoIkgqX0jwQOlD5TYy0fucywJfIqe6LHu1iMmHR8MWPNs7IzuDwXnjtal_6swe44xAFNqaA0fFAaaPk1k5UUKWqbgOj6yJGCFjj7_ydk0PFUB5PsuKA7mUNCfvQVtM2czvg3rszKu1s6zi8T2fJl_D9snIBha-zQOxei5w9PZoOxu5v2m28fz_WOXcEx_3cS4rspMtYDzxUgOZ5uGiDvwS6Tpjw43fvh4T3Q0AeaNvYE91dfziP9WUwCKn7HGBHTbgwKYeMjNM7zwDQ3RZ4qPNZN3KvoYO4jV4f2PIvFu9V8X-YIBqA20db1A7JtPIWiqK6OK8UauqpG.YBxX7DMF8NOJDcASeAfwKw"
