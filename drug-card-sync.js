@@ -17,6 +17,15 @@
     }
   }
 
+  function loadRegistryProtocols() {
+    if (document.querySelector('script[data-dozaks-registry-protocols]')) return;
+    const script = document.createElement('script');
+    script.src = '/registry-protocols.js';
+    script.defer = true;
+    script.dataset.dozaksRegistryProtocols = 'true';
+    document.head.appendChild(script);
+  }
+
   function activeSlug() {
     if (typeof state === 'undefined' || typeof catalog === 'undefined') return '';
     const item = catalog.find((entry) => entry.id === state.selectedId);
@@ -34,6 +43,7 @@
 
   function init() {
     exposeClinicalCatalog();
+    loadRegistryProtocols();
     const drugName = document.querySelector('#drugName');
     if (drugName) new MutationObserver(() => refreshActiveDrug(true)).observe(drugName, { childList: true, characterData: true, subtree: true });
 
