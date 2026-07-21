@@ -1,19 +1,22 @@
 {
   "name": "dozaks",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "netlify dev",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
     "@phosphor-icons/react": "^2.1.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@netlify/functions": "^4.2.5",
+    "@netlify/vite-plugin": "^2.5.0",
     "@vitejs/plugin-react": "^4.3.3",
     "vite": "^5.4.10"
   }
