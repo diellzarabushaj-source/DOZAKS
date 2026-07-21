@@ -1,13 +1,112 @@
 <!doctype html>
 <html lang="sq">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="DozaKS – platformë klinike praktike për profesionistë shëndetësorë në Kosovë." />
-    <title>DozaKS</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="DozaKS – platformë klinike praktike për profesionistë shëndetësorë në Kosovë." />
+  <title>DozaKS — Platforma Klinike</title>
+  <style>
+    :root{--navy:#071a35;--navy2:#0b2e5f;--blue:#1769dd;--blue-soft:#eaf2ff;--text:#0e1b34;--muted:#667085;--line:#e5eaf2;--bg:#f5f7fb;--white:#fff;--red:#e84855;--green:#0c9b70;--purple:#7451c8;--amber:#d8920a;--cyan:#087fa1;--shadow:0 16px 42px rgba(8,30,66,.09)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button{cursor:pointer}.app{min-height:100vh}.sidebar{position:fixed;inset:0 auto 0 0;width:250px;padding:18px 13px;background:var(--navy);color:#fff;overflow:auto;z-index:20}.brand{display:flex;align-items:center;gap:12px;padding:3px 6px 19px}.brand-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:13px;background:linear-gradient(145deg,#93e3ff,#4cb6ff);color:var(--navy);font-size:25px;font-weight:900}.brand strong{font-size:26px;letter-spacing:-1px}.brand strong span{color:#7ed6ff}.brand small{display:block;margin-top:3px;color:#b4c4d9;font-size:9px}.nav-label{margin:18px 8px 7px;color:#8498b2;font-size:10px;font-weight:700;letter-spacing:.08em}.nav-item{display:flex;width:100%;align-items:center;gap:11px;padding:10px 11px;border:0;border-radius:9px;background:transparent;color:#eaf2ff;text-align:left}.nav-item:hover,.nav-item.active{background:#10467d}.nav-item.danger{background:rgba(232,72,85,.16);color:#ffdce0}.nav-icon{width:22px;text-align:center}.source-note{display:flex;gap:10px;margin-top:20px;padding:13px;border:1px solid rgba(255,255,255,.16);border-radius:12px;color:#bfcee1;font-size:10px;line-height:1.5}.main{margin-left:250px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:78px;padding:13px 27px;border-bottom:1px solid var(--line);background:#fff}.heading h1{margin:0;font-size:18px}.heading p{margin:4px 0 0;color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:8px}.top-actions button{padding:9px 11px;border:0;border-radius:9px;background:transparent;color:#34405a}.top-actions button:hover{background:#f0f4f9}.profile{display:flex;align-items:center;gap:8px;margin-left:6px;padding-left:14px;border-left:1px solid var(--line)}.avatar{display:grid;place-items:center;width:37px;height:37px;border-radius:50%;background:#dbe9ff}.profile small{display:block;color:var(--muted)}.menu{display:none;border:0;background:#eff4fa;border-radius:9px;padding:9px}.content{padding:0 18px 26px}.hero{position:relative;overflow:hidden;padding:29px;border-radius:0 0 14px 14px;color:#fff;background:linear-gradient(115deg,#071a35,#0a3268)}.hero:after{content:"";position:absolute;right:-140px;bottom:-260px;width:560px;height:560px;border:1px solid rgba(105,181,255,.2);border-radius:50%;box-shadow:0 0 0 75px rgba(92,170,255,.035),0 0 0 145px rgba(92,170,255,.025)}.hero>*{position:relative;z-index:1}.hero h2{margin:0;font-size:34px;letter-spacing:-1px}.hero p{margin:6px 0 20px;color:#c8d8eb}.search-row{display:flex;gap:10px;max-width:990px}.search-box{position:relative;display:flex;align-items:center;flex:1;gap:10px;padding:0 15px;border-radius:9px;background:#fff;box-shadow:0 10px 26px rgba(0,0,0,.18)}.search-box input{width:100%;height:55px;border:0;outline:0;color:var(--text)}.advanced{min-width:175px;border:1px solid rgba(255,255,255,.28);border-radius:9px;background:rgba(255,255,255,.08);color:#fff}.suggestions{position:absolute;top:62px;left:0;right:0;display:none;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:var(--shadow);z-index:10}.suggestions.open{display:block}.suggestions button{display:flex;width:100%;align-items:center;justify-content:space-between;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:#fff;text-align:left}.suggestions button:hover{background:#f4f8ff}.suggestions small{display:block;margin-top:3px;color:var(--muted)}.type{padding:4px 8px;border-radius:999px;background:var(--blue-soft);color:var(--blue);font-size:10px;font-weight:700}.filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}.filters button{padding:7px 12px;border:1px solid rgba(255,255,255,.24);border-radius:999px;background:rgba(255,255,255,.05);color:#dfeaf8;font-size:12px}.filters button.active{border-color:#74b7ff;background:#0e5fb8;color:#fff}.advanced-panel{display:none;grid-template-columns:repeat(3,1fr);gap:10px;max-width:990px;margin-top:13px}.advanced-panel.open{display:grid}.advanced-panel label{font-size:11px;color:#cbd9ea}.advanced-panel select{width:100%;margin-top:5px;padding:10px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:#fff;color:var(--text)}.categories{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:14px 0}.category{display:flex;align-items:center;gap:11px;min-height:76px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:left;box-shadow:0 3px 12px rgba(8,30,66,.035)}.category:hover{transform:translateY(-2px);box-shadow:var(--shadow)}.bubble{display:grid;place-items:center;width:42px;height:42px;flex:0 0 auto;border-radius:12px;font-size:20px}.category strong{display:block;font-size:13px}.category small{display:block;margin-top:4px;color:var(--muted);font-size:10px}.blue{background:#e6f0ff;color:var(--blue)}.red{background:#ffecef;color:var(--red)}.green{background:#e9f8f3;color:var(--green)}.purple{background:#f0eaff;color:var(--purple)}.amber{background:#fff5dd;color:var(--amber)}.cyan{background:#e4f7fb;color:var(--cyan)}.dashboard{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:12px}.panel{position:relative;padding:17px;border:1px solid var(--line);border-radius:13px;background:#fff;box-shadow:0 4px 17px rgba(8,30,66,.04)}.panel h3{margin:0 0 13px;font-size:15px}.list button,.rank button,.emergency-list button{display:flex;width:100%;align-items:center;gap:9px;padding:10px 3px;border:0;border-bottom:1px solid #edf0f5;background:transparent;text-align:left}.list button:last-child,.rank button:last-child,.emergency-list button:last-child{border-bottom:0}.list span,.rank span,.emergency-list span{flex:1}.list time{color:var(--muted);font-size:10px}.rank b{display:grid;place-items:center;width:23px;height:23px;border-radius:7px;background:#eef3fa;color:#50627c;font-size:11px}.pill-tag{padding:4px 7px;border-radius:999px;background:#edf5ff;color:#2367bd;font-size:9px}.emergency-panel{border-top:3px solid var(--red)}.emergency-list button{color:#34405a}.emergency-list button:hover{color:var(--red)}.drug-panel{grid-column:2/4}.drug-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.drug-head p{margin:4px 0 0;color:var(--muted);font-size:12px}.favorite{border:0;background:#f5f7fb;border-radius:9px;padding:9px}.chips{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 14px}.chips button{padding:7px 10px;border:1px solid #cfd9e8;border-radius:8px;background:#fff}.chips button:first-child{border-color:var(--blue);background:var(--blue-soft);color:var(--blue)}.notice{padding:11px;border-left:3px solid var(--amber);border-radius:7px;background:#fff8e7;color:#745414;font-size:12px}.table-wrap{overflow:auto;margin-top:12px;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;min-width:620px}th,td{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:11px}th{background:#f6f8fb;color:#536079}.status{display:inline-block;padding:4px 7px;border-radius:999px;background:#fff5dd;color:#a36a00;font-weight:700}.safety{display:flex;align-items:center;gap:10px;margin-top:12px;padding:13px 15px;border:1px solid #f1cbd0;border-radius:12px;background:#fff6f7;color:#7d2730;font-size:11px}.safety span:last-child{margin-left:auto;white-space:nowrap}.toast{position:fixed;right:22px;bottom:22px;max-width:380px;padding:13px 16px;border-radius:11px;background:#071a35;color:#fff;box-shadow:var(--shadow);opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s;z-index:50}.toast.show{opacity:1;transform:none}.backdrop{display:none}
+    @media(max-width:1180px){.categories{grid-template-columns:repeat(3,1fr)}.dashboard{grid-template-columns:1fr 1fr}.drug-panel{grid-column:1/3}.emergency-panel{grid-column:2}}
+    @media(max-width:850px){.sidebar{transform:translateX(-100%);transition:.22s}.sidebar.open{transform:none}.backdrop.show{display:block;position:fixed;inset:0;background:rgba(2,15,34,.55);z-index:15}.main{margin-left:0}.menu{display:inline-flex}.top-actions button span,.profile div{display:none}.categories{grid-template-columns:repeat(2,1fr)}.dashboard{grid-template-columns:1fr}.drug-panel,.emergency-panel{grid-column:auto}.advanced-panel{grid-template-columns:1fr}.search-row{flex-direction:column}.advanced{min-height:45px}.topbar{padding:12px 15px}.content{padding:0 10px 18px}}
+    @media(max-width:540px){.heading h1{font-size:14px}.heading p{font-size:10px}.hero{padding:23px 17px}.hero h2{font-size:27px}.categories{grid-template-columns:1fr}.top-actions>button{display:none}.safety{align-items:flex-start;flex-wrap:wrap}.safety span:last-child{margin-left:0}.profile{border:0;padding-left:0}.category{min-height:66px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="backdrop" id="backdrop"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">✚</div><div><strong>Doza<span>KS</span></strong><small>VENDIMI I DUHUR. PACIENTI I SIGURT.</small></div></div>
+      <button class="nav-item active"><span class="nav-icon">⌂</span>Faqja kryesore</button>
+      <div class="nav-label">KËRKIM & REFERENCA</div>
+      <button class="nav-item"><span class="nav-icon">⌕</span>Kërkim inteligjent</button>
+      <button class="nav-item"><span class="nav-icon">◉</span>Barnat A–Z</button>
+      <button class="nav-item"><span class="nav-icon">▤</span>Diagnozat</button>
+      <button class="nav-item"><span class="nav-icon">ϟ</span>Doza të shpejta</button>
+      <button class="nav-item"><span class="nav-icon">⇄</span>Interaksionet</button>
+      <button class="nav-item"><span class="nav-icon">◌</span>Rregullimi renal</button>
+      <button class="nav-item"><span class="nav-icon">♡</span>Shtatzënia & Gjidhënia</button>
+      <div class="nav-label">MJETET KLINIKE</div>
+      <button class="nav-item"><span class="nav-icon">∑</span>Kalkulator mg/kg</button>
+      <button class="nav-item"><span class="nav-icon">⌁</span>Kalkulator infuzioni</button>
+      <button class="nav-item"><span class="nav-icon">≋</span>Kalkulator CrCl / eGFR</button>
+      <div class="nav-label">URGJENCA</div>
+      <button class="nav-item danger"><span class="nav-icon">!</span>Protokollet e urgjencës</button>
+      <div class="source-note"><span>✓</span><span>Përmbajtja klinike publikohet vetëm pas verifikimit nga redaksia mjekësore.</span></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="menu" id="menuButton">☰</button>
+        <div class="heading"><h1>Platforma Klinike e Dozave dhe Barnave</h1><p>Vetëm për profesionistë shëndetësorë në Kosovë</p></div>
+        <div class="top-actions"><button>☆ <span>Të ruajturat</span></button><button>◴ <span>Historiku</span></button><button>♢ <span>Njoftimet</span></button><div class="profile"><div class="avatar">MD</div><div><strong>Profili i mjekut</strong><small>Profesionist shëndetësor</small></div></div></div>
+      </header>
+
+      <div class="content">
+        <section class="hero">
+          <h2>Çfarë po kërkon?</h2>
+          <p>Kërko simptomën, diagnozën, barin ose emrin tregtar…</p>
+          <div class="search-row">
+            <div class="search-box"><span>⌕</span><input id="searchInput" placeholder="P.sh. dhimbje fyti, amoxicillin, Augmentin, pneumoni…" autocomplete="off" /><div class="suggestions" id="suggestions"></div></div>
+            <button class="advanced" id="advancedButton">☷ Kërkim i zgjeruar</button>
+          </div>
+          <div class="filters" id="filters"><button class="active">Të gjitha</button><button>Simptoma</button><button>Diagnoza</button><button>Bar gjenerik</button><button>Emër tregtar</button><button>Grup terapeutik</button></div>
+          <div class="advanced-panel" id="advancedPanel"><label>Pacienti<select><option>I rritur</option><option>Fëmijë</option><option>I moshuar</option></select></label><label>Konteksti<select><option>Ambulancë</option><option>Urgjencë</option><option>Spital</option></select></label><label>Gjendje e veçantë<select><option>Asnjë</option><option>Shtatzëni</option><option>Gjidhënie</option><option>Insuficiencë renale</option></select></label></div>
+        </section>
+
+        <section class="categories">
+          <button class="category" data-query="Doza të shpejta"><span class="bubble blue">ϟ</span><span><strong>Doza të shpejta</strong><small>Dozat më të përdorura</small></span></button>
+          <button class="category" data-query="Urgjenca"><span class="bubble red">!</span><span><strong>Urgjenca</strong><small>Protokollet kryesore</small></span></button>
+          <button class="category" data-query="Antibiotikët"><span class="bubble green">◉</span><span><strong>Antibiotikët</strong><small>Terapia empirike</small></span></button>
+          <button class="category" data-query="Pediatria"><span class="bubble purple">♙</span><span><strong>Pediatria</strong><small>Doza sipas peshës</small></span></button>
+          <button class="category" data-query="Shtatzënia"><span class="bubble amber">♡</span><span><strong>Shtatzënia</strong><small>Barnat dhe siguria</small></span></button>
+          <button class="category" data-query="Rregullimi renal"><span class="bubble cyan">◌</span><span><strong>Rregullimi renal</strong><small>Doza sipas eGFR</small></span></button>
+        </section>
+
+        <section class="dashboard">
+          <section class="panel"><h3>Kërkimet e fundit</h3><div class="list" id="recent"><button data-query="Amoxicillin"><span>⌕ Amoxicillin</span><time>Sot</time></button><button data-query="Dhimbje fyti te fëmijët"><span>⌕ Dhimbje fyti te fëmijët</span><time>Sot</time></button><button data-query="Pneumoni e komunitetit"><span>⌕ Pneumoni e komunitetit</span><time>Sot</time></button><button data-query="Ondansetron"><span>⌕ Ondansetron</span><time>Sot</time></button></div></section>
+          <section class="panel"><h3>Barnat më të kërkuara</h3><div class="rank"><button data-query="Paracetamol"><b>1</b><span>Paracetamol</span><em class="pill-tag">Analgjezik</em></button><button data-query="Amoxicillin"><b>2</b><span>Amoxicillin</span><em class="pill-tag">Antibiotik</em></button><button data-query="Ibuprofen"><b>3</b><span>Ibuprofen</span><em class="pill-tag">NSAID</em></button><button data-query="Metronidazole"><b>4</b><span>Metronidazole</span><em class="pill-tag">Antimikrobik</em></button><button data-query="Omeprazole"><b>5</b><span>Omeprazole</span><em class="pill-tag">PPI</em></button></div></section>
+          <section class="panel emergency-panel"><h3>Protokollet e urgjencës</h3><div class="emergency-list"><button data-query="Anafilaksia"><span>! Anafilaksia</span>→</button><button data-query="Status epileptik"><span>! Status epileptik</span>→</button><button data-query="Hiperkalemia"><span>! Hiperkalemia</span>→</button><button data-query="Hipoglikemia"><span>! Hipoglikemia</span>→</button><button data-query="Sepsa"><span>! Sepsa</span>→</button></div></section>
+
+          <section class="panel drug-panel" id="drugPanel">
+            <div class="drug-head"><div><h3 id="drugName">Amoxicillin</h3><p id="drugGroup">Antibiotik — Penicilina</p></div><button class="favorite">☆</button></div>
+            <h4>Format e zakonshme</h4><div class="chips"><button>Tableta</button><button>Kapsula</button><button>Suspension</button><button>IV</button></div>
+            <div class="notice">Përmbajtja e dozimit është e bllokuar në këtë MVP derisa të verifikohet nga redaksia mjekësore dhe të lidhet me burimet zyrtare.</div>
+            <div class="table-wrap"><table><thead><tr><th>Indikacioni</th><th>Të rriturit</th><th>Fëmijët</th><th>Statusi</th></tr></thead><tbody id="doseRows"><tr><td>Infeksione ORL</td><td>—</td><td>—</td><td><span class="status">Në verifikim</span></td></tr><tr><td>Infeksione respiratore</td><td>—</td><td>—</td><td><span class="status">Në verifikim</span></td></tr><tr><td>Infeksione urinare</td><td>—</td><td>—</td><td><span class="status">Në verifikim</span></td></tr></tbody></table></div>
+          </section>
+        </section>
+        <div class="safety"><span>⚠</span><span>DozaKS është mjet mbështetës për profesionistë shëndetësorë, jo zëvendësim i gjykimit klinik, protokollit institucional ose verifikimit farmaceutik.</span><span>MVP 2026</span></div>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    const catalog=[
+      {name:'Amoxicillin',type:'Bar gjenerik',group:'Antibiotik — Penicilina',aliases:['amoksicilin','amoxicilin','amoxil']},
+      {name:'Augmentin',type:'Emër tregtar',group:'Amoxicillin + clavulanate',aliases:['amoksiklav','co-amoxiclav']},
+      {name:'Paracetamol',type:'Bar gjenerik',group:'Analgjezik / Antipiretik',aliases:['acetaminophen','temperaturë']},
+      {name:'Ibuprofen',type:'Bar gjenerik',group:'NSAID / Analgjezik',aliases:['brufen','nurofen']},
+      {name:'Metronidazole',type:'Bar gjenerik',group:'Antimikrobik',aliases:['metronidazol','flagyl']},
+      {name:'Omeprazole',type:'Bar gjenerik',group:'Frenues i pompës protonike',aliases:['omeprazol','losec']},
+      {name:'Ondansetron',type:'Bar gjenerik',group:'Antiemetik',aliases:['zofran','ondansetron iv']},
+      {name:'Ceftriaxone',type:'Bar gjenerik',group:'Cefalosporinë',aliases:['ceftriakson','rocephin']},
+      {name:'Dhimbje fyti te fëmijët',type:'Simptomë',group:'Algoritëm klinik',aliases:['dhimbje fyti','tonsilit']},
+      {name:'Pneumoni e komunitetit',type:'Diagnozë',group:'Udhëzues praktik',aliases:['pneumoni','cap']},
+      {name:'Infeksion urinar',type:'Diagnozë',group:'Algoritëm klinik',aliases:['uti','cistit']},
+      {name:'Temperaturë te fëmijët',type:'Simptomë',group:'Vlerësim sipas moshës',aliases:['ethe','temperaturë fëmijë']}
+    ];
+    const input=document.getElementById('searchInput'),suggestions=document.getElementById('suggestions'),toast=document.getElementById('toast');
+    const normalize=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    function results(q){const n=normalize(q);if(!n)return[];return catalog.map(x=>{const name=normalize(x.name),a=x.aliases.map(normalize);let score=name===n?100:name.startsWith(n)?80:a.some(y=>y===n)?75:name.includes(n)?60:a.some(y=>y.includes(n)||n.includes(y))?45:0;return{...x,score}}).filter(x=>x.score).sort((a,b)=>b.score-a.score).slice(0,6)}
+    function render(){const r=results(input.value);suggestions.innerHTML=r.map(x=>`<button data-name="${x.name}"><span><strong>${x.name}</strong><small>${x.group}</small></span><span class="type">${x.type}</span></button>`).join('');suggestions.classList.toggle('open',r.length>0)}
+    function showToast(message){toast.textContent=message;toast.classList.add('show');clearTimeout(window.t);window.t=setTimeout(()=>toast.classList.remove('show'),3000)}
+    function openItem(name){const item=catalog.find(x=>x.name===name)||results(name)[0];suggestions.classList.remove('open');input.value=name;if(!item){showToast('Moduli “'+name+'” do të shtohet në fazën e ardhshme.');return}document.getElementById('drugName').textContent=item.name;document.getElementById('drugGroup').textContent=item.group;document.getElementById('drugPanel').scrollIntoView({behavior:'smooth',block:'center'});showToast(item.name+' u hap. Të dhënat klinike janë në verifikim editorial.');const recent=document.getElementById('recent');const b=document.createElement('button');b.dataset.query=item.name;b.innerHTML='<span>⌕ '+item.name+'</span><time>Tani</time>';b.onclick=()=>openItem(item.name);recent.prepend(b);while(recent.children.length>5)recent.lastElementChild.remove()}
+    input.addEventListener('input',render);input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const r=results(input.value);openItem(r[0]?.name||input.value)}});suggestions.addEventListener('click',e=>{const b=e.target.closest('button');if(b)openItem(b.dataset.name)});document.addEventListener('click',e=>{if(!e.target.closest('.search-box'))suggestions.classList.remove('open')});
+    document.querySelectorAll('[data-query]').forEach(b=>b.addEventListener('click',()=>openItem(b.dataset.query)));
+    document.querySelectorAll('#filters button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#filters button').forEach(x=>x.classList.remove('active'));b.classList.add('active');showToast('Filtri “'+b.textContent+'” u aktivizua.')}));
+    document.getElementById('advancedButton').onclick=()=>document.getElementById('advancedPanel').classList.toggle('open');
+    const sidebar=document.getElementById('sidebar'),backdrop=document.getElementById('backdrop');document.getElementById('menuButton').onclick=()=>{sidebar.classList.add('open');backdrop.classList.add('show')};backdrop.onclick=()=>{sidebar.classList.remove('open');backdrop.classList.remove('show')};
+  </script>
+</body>
 </html>
