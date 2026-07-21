@@ -1,0 +1,75 @@
+name: One-time official medicinal products catalogue import
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/import-official-catalog.yml
+
+permissions:
+  contents: read
+
+jobs:
+  import-catalogue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://dozaks_import_67cc105f:C8flwNwyurZf5dl2SW2qI0-iuacHmfk7@ep-long-union-awru01in-pooler.c-12.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require
+      SOURCE_URL: https://msh.rks-gov.net/Documents/DownloadDocument?fileName=Vendi29681294.8101.xlsx
+      EXPECTED_SHA256: 1dfbc24266772d043829d25c341d4e63c709459fdfe540f8482f8efe319660e6
+      SOURCE_FILE: Regjistri-i-barnave-Final-2025.xlsx
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Download official Ministry XLSX
+        run: >-
+          curl -L --retry 4 --retry-all-errors
+          --user-agent "Mozilla/5.0 DozaKS/1.0"
+          --referer "https://msh.rks-gov.net/Documents/Index/267?year=2026"
+          "$SOURCE_URL" --output "$SOURCE_FILE"
+
+      - name: Verify official file checksum
+        run: echo "$EXPECTED_SHA256  $SOURCE_FILE" | sha256sum --check --strict
+
+      - name: Import all product rows into Neon main
+        run: npm run import:catalog -- "$SOURCE_FILE"
+
+      - name: Verify imported catalogue
+        run: |
+          node --input-type=module <<'NODE'
+          import { neon } from '@neondatabase/serverless';
+          const sql = neon(process.env.DATABASE_URL);
+          const [result] = await sql`
+            SELECT
+              count(*)::int AS product_rows,
+              count(DISTINCT trade_name)::int AS trade_names,
+              count(DISTINCT active_substance_normalized)::int AS active_substances,
+              min(source_row_number)::int AS first_source_row,
+              max(source_row_number)::int AS last_source_row
+            FROM public.product_catalog_entries e
+            JOIN public.product_catalog_versions v ON v.id=e.catalog_version_id
+            WHERE v.status='active' AND e.import_status='imported'
+          `;
+          const batches = await sql`
+            SELECT count(*)::int AS completed_batches
+            FROM public.product_catalog_import_batches b
+            JOIN public.product_catalog_versions v ON v.id=b.catalog_version_id
+            WHERE v.status='active' AND b.status='completed'
+          `;
+          console.log(JSON.stringify({ ...result, ...batches[0] }, null, 2));
+          if (result.product_rows !== 4006 || result.first_source_row !== 3 || result.last_source_row !== 4008) {
+            throw new Error('Catalogue verification failed');
+          }
+          NODE
