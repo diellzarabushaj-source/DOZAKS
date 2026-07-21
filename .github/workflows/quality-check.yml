@@ -1,0 +1,40 @@
+name: DozaKS quality check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+
+      - name: Verify clinical shell
+        shell: bash
+        run: |
+          test -f index.html
+          test -f product-catalog.js
+          test -f contraindications-ui.js
+          test -f clinical-workbench.js
+          test -f clinical-workbench-runtime.js
+          test -f api/product-catalog.js
+          test -f api/protocol-safety.js
+          grep -q 'clinical-workbench.js' index.html
+          grep -q 'clinical-workbench-runtime.js' sw.js
