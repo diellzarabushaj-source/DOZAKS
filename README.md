@@ -1,40 +1,33 @@
 # DozaKS
 
-DozaKS është një prototip funksional i një platforme klinike të shpejtë për profesionistët shëndetësorë në Kosovë.
+DozaKS është MVP funksional i një platforme klinike të shpejtë për profesionistët shëndetësorë në Kosovë.
 
 ## Versioni i parë
 
 - Dashboard responsive sipas dizajnit referencë
 - Kërkim universal sipas simptomës, diagnozës, emrit gjenerik dhe emrit tregtar
-- Tolerim bazë i varianteve të shkrimit për disa barna demo
-- Filtra të kërkimit
-- Kërkime të fundit dhe historik lokal
-- Panel dinamik i barit
-- Ruajtje lokale e barit të preferuar
-- Kalkulator aritmetik mg/kg, infuzioni dhe BSA
-- Menu responsive për mobile dhe tablet
-- Modal për kërkim të zgjeruar
-- Gjendje hover, focus dhe njoftime interaktive
+- Sugjerime të menjëhershme gjatë shkrimit
+- Filtra klinikë dhe kërkim i zgjeruar
+- Seksione për urgjencë, pediatri, antibiotikë, shtatzëni dhe rregullim renal
+- Panel demonstrues i barit me format dhe tabelën sipas indikacionit
+- Menu responsive për desktop, tablet dhe mobile
+- Gjendje hover, focus dhe navigim me tastierë
 
-## Ekzekutimi
-
-Faqja është statike. Hape `index.html` direkt, ose përdor një server lokal:
+## Ekzekutimi lokal
 
 ```bash
-python -m http.server 8000
+npm install
+npm run dev
 ```
 
-Pastaj hape `http://localhost:8000`.
+## Build për production
 
-## GitHub Pages
+```bash
+npm run build
+npm run preview
+```
 
-Në repository:
-
-1. Hape **Settings**.
-2. Hape **Pages**.
-3. Te **Build and deployment**, zgjidh **Deploy from a branch**.
-4. Zgjidh branch-in `main` dhe folder-in `/root`.
-5. Ruaj ndryshimin.
+Netlify është konfiguruar për të ekzekutuar `npm run build` dhe për të publikuar folderin `dist`.
 
 ## Siguria klinike
 
@@ -50,6 +43,8 @@ Për këtë arsye tabelat e dozimit në versionin fillestar shënohen **Në veri
 
 ## Struktura
 
-- `index.html` – struktura dhe përmbajtja
-- `styles.css` – dizajni responsive
-- `app.js` – kërkimi dhe ndërveprimet
+- `index.html` – hyrja e aplikacionit
+- `src/main.jsx` – komponentët dhe ndërveprimet React
+- `src/styles.css` – dizajni responsive
+- `vite.config.js` – konfigurimi i build-it
+- `netlify.toml` – konfigurimi i deploy-it
