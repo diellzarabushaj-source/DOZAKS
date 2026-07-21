@@ -9,6 +9,7 @@
       if (typeof openModal === 'function') window.openModal = openModal;
       if (typeof closeModal === 'function') window.closeModal = closeModal;
       if (typeof showToast === 'function') window.showToast = showToast;
+      if (typeof renderRecent === 'function') window.renderRecent = renderRecent;
     } catch (error) {
       console.warn('DozaKS application bridge failed', error);
     }
@@ -30,12 +31,18 @@
   }
 
   function refreshActiveDrug(force = false) {
+    if (window.DozaKSProductMode) return;
     const slug = activeSlug();
     if (!slug || !window.DozaKSDatabase?.renderDrugCard) return;
     if (!force && slug === lastSlug && Date.now() - lastLoadedAt < 30000) return;
     lastSlug = slug;
     lastLoadedAt = Date.now();
     window.DozaKSDatabase.renderDrugCard(slug);
+  }
+
+  function leaveProductModeForClinicalNavigation() {
+    window.DozaKSProductCatalog?.leaveProductMode?.();
+    window.DozaKSProductMode = false;
   }
 
   function init() {
@@ -45,12 +52,15 @@
     if (drugName) new MutationObserver(() => refreshActiveDrug(true)).observe(drugName, { childList: true, characterData: true, subtree: true });
 
     document.addEventListener('click', (event) => {
-      if (event.target.closest('[data-open-item], [data-result-id], #popularList button, #recentList button')) {
+      if (event.target.closest('[data-open-item]:not([data-open-item^="product:"]), [data-result-id], #popularList button, #recentList button:not([data-open-item^="product:"])')) {
+        leaveProductModeForClinicalNavigation();
         setTimeout(() => refreshActiveDrug(true), 40);
       }
     });
 
-    document.querySelector('#searchForm')?.addEventListener('submit', () => setTimeout(() => refreshActiveDrug(true), 40));
+    document.querySelector('#searchForm')?.addEventListener('submit', () => {
+      if (!window.DozaKSProductMode) setTimeout(() => refreshActiveDrug(true), 40);
+    });
     window.addEventListener('dozaks:database-ready', () => refreshActiveDrug(true));
     setTimeout(() => refreshActiveDrug(true), 80);
   }
