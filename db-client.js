@@ -2,6 +2,9 @@
 
 (() => {
   const API_URL = '/api/clinical-data';
+  const REQUEST_TIMEOUT_MS = 5500;
+  let lastSuccessfulRefresh = 0;
+
   const normalizeDb = (value = '') => String(value)
     .toLocaleLowerCase('sq')
     .normalize('NFD')
@@ -21,25 +24,20 @@
     return 'other';
   }
 
-  function setDatabaseStatus(status, message) {
+  function setDatabaseStatus(status, message, title = '') {
     let badge = document.querySelector('#databaseStatus');
     if (!badge) {
       badge = document.createElement('span');
       badge.id = 'databaseStatus';
-      badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:700;vertical-align:middle;';
-      const target = document.querySelector('.heading p');
-      target?.appendChild(badge);
+      badge.className = 'database-status';
+      badge.setAttribute('role', 'status');
+      badge.setAttribute('aria-live', 'polite');
+      document.querySelector('.heading p')?.appendChild(badge);
     }
-
-    const styles = {
-      loading: ['#fff7df', '#8a6200'],
-      connected: ['#e8f8f1', '#087a55'],
-      offline: ['#fff0f1', '#aa2e3a'],
-    };
-    const [background, color] = styles[status] || styles.loading;
-    badge.style.background = background;
-    badge.style.color = color;
+    badge.dataset.state = status;
     badge.textContent = message;
+    badge.title = title || message;
+    document.body.dataset.database = status;
   }
 
   function mergeDrug(remoteDrug) {
@@ -87,7 +85,9 @@
   }
 
   function mergeClinical(remoteItem, type) {
-    const existing = clinicalItems.find((item) => normalizeDb(item.name) === normalizeDb(remoteItem.name));
+    const existing = clinicalItems.find((item) =>
+      item.id === remoteItem.slug || normalizeDb(item.name) === normalizeDb(remoteItem.name)
+    );
     if (existing) {
       existing.dbId = remoteItem.id;
       existing.slug = remoteItem.slug;
@@ -104,7 +104,7 @@
       type,
       typeLabel: type === 'diagnosis' ? 'Diagnozë' : 'Simptomë',
       group: type === 'diagnosis' ? (remoteItem.specialty || 'Algoritëm klinik') : 'Vlerësim klinik',
-      aliases: [],
+      aliases: Array.isArray(remoteItem.aliases) ? remoteItem.aliases : [],
       summary: remoteItem.summary || 'Moduli është në përgatitje editoriale.',
     };
     clinicalItems.push(item);
@@ -113,30 +113,75 @@
   }
 
   function mergeEmergency(remoteItem) {
-    const existing = emergencyItems.find((item) => normalizeDb(item.name) === normalizeDb(remoteItem.name));
+    const existing = emergencyItems.find((item) =>
+      item.id === remoteItem.slug || normalizeDb(item.name) === normalizeDb(remoteItem.name)
+    );
     if (existing) {
       existing.dbId = remoteItem.id;
       existing.slug = remoteItem.slug;
       existing.summary = remoteItem.summary || existing.summary;
-      return;
+      return existing;
     }
-    emergencyItems.push({
+    const item = {
       id: remoteItem.slug,
       dbId: remoteItem.id,
       slug: remoteItem.slug,
       name: remoteItem.name,
       summary: remoteItem.summary || 'Protokoll i verifikuar editorial.',
-    });
+    };
+    emergencyItems.push(item);
+    return item;
+  }
+
+  function mergeSearchResult(remoteItem) {
+    if (remoteItem.type === 'generic') {
+      return mergeDrug({
+        id: remoteItem.id,
+        slug: remoteItem.slug,
+        generic_name: remoteItem.name,
+        therapeutic_group: remoteItem.group_name,
+        description: remoteItem.summary,
+        aliases: remoteItem.aliases || [],
+        forms: [],
+        published_dose_count: 0,
+      });
+    }
+    if (remoteItem.type === 'diagnosis' || remoteItem.type === 'symptom') {
+      return mergeClinical({
+        id: remoteItem.id,
+        slug: remoteItem.slug,
+        name: remoteItem.name,
+        specialty: remoteItem.type === 'diagnosis' ? remoteItem.group_name : null,
+        summary: remoteItem.summary,
+        aliases: remoteItem.aliases || [],
+      }, remoteItem.type);
+    }
+    return null;
+  }
+
+  function hydrateSearchResults(results = []) {
+    return results.map(mergeSearchResult).filter(Boolean);
   }
 
   async function fetchJson(url) {
-    const response = await fetch(url, { headers: { accept: 'application/json' } });
-    if (!response.ok) throw new Error(`API ${response.status}`);
-    return response.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, {
+        headers: { accept: 'application/json' },
+        credentials: 'same-origin',
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`API ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  async function refreshDatabase() {
-    setDatabaseStatus('loading', '● Neon DB: duke u lidhur');
+  async function refreshDatabase({ silent = false } = {}) {
+    if (!silent) setDatabaseStatus('loading', '● Neon: duke u lidhur');
+    const startedAt = performance.now();
     try {
       const data = await fetchJson(`${API_URL}?mode=bootstrap`);
       if (typeof catalog === 'undefined' || typeof clinicalItems === 'undefined') {
@@ -152,12 +197,15 @@
       if (typeof renderEmergencies === 'function') renderEmergencies();
       if (typeof renderSelectedDrug === 'function') renderSelectedDrug();
 
-      setDatabaseStatus('connected', `● Neon DB: lidhur · ${data.drugs?.length || 0} barna`);
-      window.dispatchEvent(new CustomEvent('dozaks:database-ready', { detail: data }));
+      const elapsed = Math.round(performance.now() - startedAt);
+      lastSuccessfulRefresh = Date.now();
+      setDatabaseStatus('connected', `● Neon · ${data.drugs?.length || 0} barna`, `Databaza u lidh në ${elapsed} ms. Shfaqen vetëm rekordet e publikuara.`);
+      window.dispatchEvent(new CustomEvent('dozaks:database-ready', { detail: { ...data, elapsed } }));
       return data;
     } catch (error) {
       console.warn('DozaKS database fallback active', error);
-      setDatabaseStatus('offline', '● Neon DB: fallback lokal');
+      setDatabaseStatus('offline', '● Fallback lokal', 'Neon nuk u arrit. Po përdoret katalogu lokal pa doza të publikuara.');
+      window.dispatchEvent(new CustomEvent('dozaks:database-error', { detail: { message: String(error?.message || error) } }));
       return null;
     }
   }
@@ -176,13 +224,19 @@
   window.DozaKSDatabase = {
     refresh: refreshDatabase,
     search: searchDatabase,
+    hydrateSearchResults,
     getDrug: getDrugFromDatabase,
     health: () => fetchJson(`${API_URL}?mode=health`),
+    getLastSuccessfulRefresh: () => lastSuccessfulRefresh,
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', refreshDatabase, { once: true });
-  } else {
-    refreshDatabase();
-  }
+  const start = () => refreshDatabase();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && navigator.onLine && Date.now() - lastSuccessfulRefresh > 5 * 60 * 1000) {
+      refreshDatabase({ silent: true });
+    }
+  });
 })();
