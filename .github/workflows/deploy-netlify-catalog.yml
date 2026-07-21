@@ -19,7 +19,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy repository to Netlify
-        run: >-
-          npx -y @netlify/mcp@latest
-          --site-id 8b459b64-b5ff-4352-8a4c-d7203e292149
-          --proxy-path "https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..8_3MhrIDk-kV838n.7-OW7gpiXjijUm30v1wu61vY8_TyZRaUFTQINArPx0dbS4U6dOF20eXMjPjzBXqtIX-eqoLAPoXBPrOnk0u8Pi8Qw4UHGqfhJNSLrmOm66949W0Qy3CLMm-GH1DUz-Zv1oDh-chEXX92PSz8rsn1CumVtTtYIfeSlgu3DuvjjB8jaidwTazzS7IyG8WY00E_u9BeOE3lWmoXKuwrXplMvbvXl8hdbH2B-6DfizLDHXwl4xsGj4_u9Ck6KEWMJLvi-rbxxpE5fyRaCFSX5AanZTfCYPB3BenCqhbuIKW88-dsUoXZPEPft54Vl1GCGFGHxVaZpW8FP6m36Jd3EDM_Set9MIQBJx6vubuvyyGSfKyOR5TYGx68_JPEBeOiDME6pjIY9HdX.b2pmHSoxl5PKzBz5hTtzLg"
+        shell: bash
+        run: |
+          set +e
+          npx -y @netlify/mcp@latest \
+            --site-id 8b459b64-b5ff-4352-8a4c-d7203e292149 \
+            --proxy-path "https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..l08Le6Ta--dXJ7KD.RugELUbEXm-r6N519RI2rPyK837vygUlvfyAZg4HozQln7KN3h3Krp8N2ILL90WOihlRYffl3jdjadN9c24IFvUacwls1jfOXp3w_D098eaohkJa-J8JJlQ7pldjNDHCwMfPptsV_0SwKHH5-YEenvSMBJ7zoSVJEy0qBA8GVa6-h0fzUKmvHjp-NwsWyizQx00gk6FPTXzx9NzRId_osDQ6lUJOEgxcmrZXePGdI_xEABSbTqUqonhllaeu6UmJXrOpQvxN7J8LHUWabVtoV6I1_dEYwmKXEFi4tBa6EeJQMTnxxdq0kq_KsTdN4vcM4_GURqnezd52YzyaWRyfRvQZNQMPHp8U0LOXLUrv6Ppovzm7hjL8sMhnUDQP_DqCAYRhh_0l.6Ehb9c8L40CT8RGaDO2q8Q" \
+            2>&1 | tee netlify-deploy.log
+          status=${PIPESTATUS[0]}
+          echo "----- LAST 100 LINES -----"
+          tail -n 100 netlify-deploy.log
+          exit "$status"
