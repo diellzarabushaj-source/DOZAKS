@@ -1,5 +1,5 @@
-const CACHE_NAME = 'dozaks-shell-v6';
-const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/db-client.js', '/drug-card-sync.js', '/ux.js', '/product-catalog.js'];
+const CACHE_NAME = 'dozaks-shell-v7';
+const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/db-client.js', '/drug-card-sync.js', '/ux.js', '/product-catalog.js', '/contraindications-ui.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
