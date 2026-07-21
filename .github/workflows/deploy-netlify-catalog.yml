@@ -1,0 +1,25 @@
+name: Deploy DozaKS catalogue backend to Netlify
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .netlify-catalog-deploy-trigger
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+
+      - name: Deploy repository to Netlify
+        run: >-
+          npx -y @netlify/mcp@latest
+          --site-id 8b459b64-b5ff-4352-8a4c-d7203e292149
+          --proxy-path "https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..8_3MhrIDk-kV838n.7-OW7gpiXjijUm30v1wu61vY8_TyZRaUFTQINArPx0dbS4U6dOF20eXMjPjzBXqtIX-eqoLAPoXBPrOnk0u8Pi8Qw4UHGqfhJNSLrmOm66949W0Qy3CLMm-GH1DUz-Zv1oDh-chEXX92PSz8rsn1CumVtTtYIfeSlgu3DuvjjB8jaidwTazzS7IyG8WY00E_u9BeOE3lWmoXKuwrXplMvbvXl8hdbH2B-6DfizLDHXwl4xsGj4_u9Ck6KEWMJLvi-rbxxpE5fyRaCFSX5AanZTfCYPB3BenCqhbuIKW88-dsUoXZPEPft54Vl1GCGFGHxVaZpW8FP6m36Jd3EDM_Set9MIQBJx6vubuvyyGSfKyOR5TYGx68_JPEBeOiDME6pjIY9HdX.b2pmHSoxl5PKzBz5hTtzLg"
