@@ -116,6 +116,15 @@
     remoteSearchTimer = setTimeout(() => enrichSearchFromDatabase(value), 260);
   }
 
+  function loadDrugCardSync() {
+    if (document.querySelector('script[data-dozaks-drug-sync]')) return;
+    const script = document.createElement('script');
+    script.src = '/drug-card-sync.js';
+    script.defer = true;
+    script.dataset.dozaksDrugSync = 'true';
+    document.head.appendChild(script);
+  }
+
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
     navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('DozaKS service worker registration failed', error));
@@ -135,6 +144,7 @@
     syncActiveNavigation();
     updateNetworkState();
     setFocusMode(sessionStorage.getItem('dozaks-focus-mode') === '1', 'restore', true);
+    loadDrugCardSync();
 
     focusModeButton?.addEventListener('click', () => toggleFocusMode('toolbar'));
     focusCardButton?.addEventListener('click', () => toggleFocusMode('card'));
