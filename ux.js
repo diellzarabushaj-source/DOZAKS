@@ -5,6 +5,7 @@
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const isTypingTarget = (target) => target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
   const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+  const modalActions = new Set(['drugs', 'diagnoses', 'quick-dose', 'interactions', 'renal-adjustment', 'pregnancy', 'calc-mgkg', 'calc-infusion', 'calc-renal', 'calc-bsa', 'emergency', 'antibiotics', 'pediatrics', 'alternatives', 'saved', 'history', 'notifications', 'profile']);
 
   let lastModalTrigger = null;
   let remoteSearchTimer = null;
@@ -15,10 +16,21 @@
     if (typeof window.showToast === 'function') window.showToast(message);
   }
 
+  function selectByText(select, text) {
+    if (!select || !text) return;
+    const option = [...select.options].find((item) => item.textContent === text);
+    if (option) select.value = option.value;
+  }
+
   function renderContext() {
     const stored = (() => {
       try { return JSON.parse(localStorage.getItem('dozaks-context') || 'null'); } catch { return null; }
     })();
+    if (stored) {
+      selectByText($('#patientType'), stored.patient);
+      selectByText($('#careContext'), stored.context);
+      selectByText($('#specialState'), stored.special);
+    }
     const patient = stored?.patient || $('#patientType')?.selectedOptions?.[0]?.textContent || 'I rritur';
     const care = stored?.context || $('#careContext')?.selectedOptions?.[0]?.textContent || 'Ambulancë';
     const special = stored?.special || $('#specialState')?.selectedOptions?.[0]?.textContent || 'Asnjë';
@@ -35,7 +47,7 @@
     button.setAttribute('aria-expanded', String(panel.classList.contains('open')));
   }
 
-  function setFocusMode(enabled, source = 'toolbar') {
+  function setFocusMode(enabled, source = 'toolbar', silent = false) {
     document.body.classList.toggle('focus-mode', enabled);
     sessionStorage.setItem('dozaks-focus-mode', enabled ? '1' : '0');
     [$('#focusModeButton'), $('#focusCardButton')].filter(Boolean).forEach((button) => {
@@ -43,7 +55,7 @@
       button.setAttribute('aria-pressed', String(enabled));
     });
     if (enabled && source === 'card') $('#drugPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    announce(enabled ? 'Fokusi klinik u aktivizua.' : 'Pamja e plotë u rikthye.');
+    if (!silent) announce(enabled ? 'Fokusi klinik u aktivizua.' : 'Pamja e plotë u rikthye.');
   }
 
   function toggleFocusMode(source) {
@@ -122,7 +134,7 @@
     syncAdvancedState();
     syncActiveNavigation();
     updateNetworkState();
-    setFocusMode(sessionStorage.getItem('dozaks-focus-mode') === '1');
+    setFocusMode(sessionStorage.getItem('dozaks-focus-mode') === '1', 'restore', true);
 
     focusModeButton?.addEventListener('click', () => toggleFocusMode('toolbar'));
     focusCardButton?.addEventListener('click', () => toggleFocusMode('card'));
@@ -148,8 +160,9 @@
     searchInput?.addEventListener('input', (event) => scheduleRemoteSearch(event.target.value));
 
     document.addEventListener('click', (event) => {
-      const opener = event.target.closest('[data-action], [data-open-item], [data-emergency], [data-clinical], #openDetails');
-      if (opener && modal?.hidden) lastModalTrigger = opener;
+      const actionButton = event.target.closest('[data-action]');
+      const opensItem = event.target.closest('[data-open-item], [data-emergency], [data-clinical], #openDetails');
+      if (opensItem || (actionButton && modalActions.has(actionButton.dataset.action))) lastModalTrigger = actionButton || opensItem;
       requestAnimationFrame(syncActiveNavigation);
     }, true);
 
