@@ -24,9 +24,8 @@ jobs:
           set +e
           npx -y @netlify/mcp@latest \
             --site-id 8b459b64-b5ff-4352-8a4c-d7203e292149 \
-            --proxy-path "https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..l08Le6Ta--dXJ7KD.RugELUbEXm-r6N519RI2rPyK837vygUlvfyAZg4HozQln7KN3h3Krp8N2ILL90WOihlRYffl3jdjadN9c24IFvUacwls1jfOXp3w_D098eaohkJa-J8JJlQ7pldjNDHCwMfPptsV_0SwKHH5-YEenvSMBJ7zoSVJEy0qBA8GVa6-h0fzUKmvHjp-NwsWyizQx00gk6FPTXzx9NzRId_osDQ6lUJOEgxcmrZXePGdI_xEABSbTqUqonhllaeu6UmJXrOpQvxN7J8LHUWabVtoV6I1_dEYwmKXEFi4tBa6EeJQMTnxxdq0kq_KsTdN4vcM4_GURqnezd52YzyaWRyfRvQZNQMPHp8U0LOXLUrv6Ppovzm7hjL8sMhnUDQP_DqCAYRhh_0l.6Ehb9c8L40CT8RGaDO2q8Q" \
-            2>&1 | tee netlify-deploy.log
-          status=${PIPESTATUS[0]}
-          echo "----- LAST 100 LINES -----"
-          tail -n 100 netlify-deploy.log
+            --proxy-path "https://netlify-mcp.netlify.app//proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..MPowk3GrAADFMXdE.Y62Y21a6HxSluGH-rjsBRmkaQLuu0bagmArjtrmelq9j4se7fW6oUs9VNmxP76KQKJUlqE6TpwANjLD4VTEdBiWGJSfpIk8AULL_KRvVa4Id26pR5OFmNG5KX9sYwJluV5LViwCCgec581xI6dQghnaHbQ35A6tzCYwE2w0E-2MUfYndDRXMOGVPScOj0609DowqSoV0oIHW-z8Kr5fdhftP2gwCunAufxO2WyNIJfd7rzurJ-ZFUurOZlB9DM2Hgj4ulTjZByWwpRaXXdlMkf_Y8NQ8o9TgWrZ5JCVoqUPLh41ZLxRd5oxP-6S1wI2a_VDjPim5Hpwyo0jELVJjsDYt4gAIzosrU21JLPedivsDNLzJEfmKnJUuw1fiJ1qDsRKyV4PZ.gBILGxX3c7qqX6P7B1SOrg" \
+            > netlify-deploy.log 2>&1
+          status=$?
+          cat netlify-deploy.log
           exit "$status"
