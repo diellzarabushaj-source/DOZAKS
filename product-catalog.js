@@ -2,11 +2,17 @@
 
 (() => {
   const API_URL = '/api/product-catalog';
-  const REQUEST_TIMEOUT = 4500;
+  const REQUEST_TIMEOUT = 4200;
+  const SEARCH_DELAY = 150;
+  const MAX_RESULTS = 5;
+
   let activeController = null;
   let searchTimer = null;
   let latestSequence = 0;
-  const cache = new Map();
+  let activeProductId = '';
+
+  const resultCache = new Map();
+  const productsById = new Map();
 
   const normalize = (value = '') => String(value)
     .toLocaleLowerCase('sq')
@@ -17,6 +23,23 @@
   const escapeHTML = (value = '') => String(value).replace(/[&<>'"]/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
   })[character]);
+
+  const formatPrice = (value) => {
+    const amount = Number(value);
+    return Number.isFinite(amount)
+      ? new Intl.NumberFormat('sq-AL', { style: 'currency', currency: 'EUR' }).format(amount)
+      : '—';
+  };
+
+  const formatDate = (value) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('sq-AL', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+  };
+
+  const searchInput = () => document.querySelector('#searchInput');
+  const suggestions = () => document.querySelector('#suggestions');
 
   function toast(message) {
     window.showToast?.(message);
@@ -44,165 +67,342 @@
     const style = document.createElement('style');
     style.id = 'productCatalogStyles';
     style.textContent = `
-      .catalog-launch-card{display:flex;align-items:center;gap:13px;min-height:88px;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff;text-align:left;box-shadow:0 4px 17px rgba(8,30,66,.04);transition:.16s}
-      .catalog-launch-card:hover{transform:translateY(-2px);border-color:#b9d1f3;box-shadow:var(--shadow)}
-      .catalog-launch-card>span:nth-child(2){min-width:0;flex:1}.catalog-launch-card strong{display:block;font-size:14px}.catalog-launch-card small{display:block;margin-top:5px;color:var(--muted);line-height:1.45}.catalog-launch-card .arrow{color:var(--blue);font-weight:900}
-      .catalog-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;margin-bottom:12px}.catalog-toolbar input{min-height:46px;padding:10px 13px;border:1px solid #ccd8e8;border-radius:10px;background:#fff;font:inherit}.catalog-toolbar button{min-height:46px;padding:0 15px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-weight:800}
-      .catalog-status{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:#f4f8fe;color:#3b5575;font-size:11px}.catalog-status strong{color:var(--navy)}
-      .catalog-results{display:grid;gap:8px}.catalog-empty{padding:30px 16px;border:1px dashed #cbd8e8;border-radius:12px;background:#fbfcfe;text-align:center;color:var(--muted)}
-      .catalog-result{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:left}.catalog-result:hover{border-color:#b8cff0;background:#fbfdff}.catalog-result h3{margin:0;font-size:14px}.catalog-result p{margin:4px 0 0;color:#49617e;font-size:12px;line-height:1.45}.catalog-result small{display:block;margin-top:7px;color:var(--muted);font-size:10px;line-height:1.45}.catalog-result-side{display:flex;flex-direction:column;align-items:flex-end;gap:7px}.catalog-code{display:inline-flex;align-items:center;justify-content:center;min-width:68px;padding:6px 8px;border-radius:8px;background:#eaf2ff;color:#1559ae;font-size:11px;font-weight:900}.catalog-badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#edf7f3;color:#087254;font-size:9px;font-weight:800}.catalog-price{font-size:12px;font-weight:900;color:var(--navy)}
-      .catalog-detail{display:grid;gap:12px}.catalog-detail-header{padding:14px;border-radius:12px;background:linear-gradient(135deg,#eef5ff,#f9fbff)}.catalog-detail-header h3{margin:0 0 5px;font-size:18px}.catalog-detail-header p{margin:0;color:#49617e}.catalog-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.catalog-detail-grid div{padding:11px;border:1px solid var(--line);border-radius:10px;background:#fff}.catalog-detail-grid span{display:block;color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.catalog-detail-grid strong{display:block;margin-top:4px;font-size:12px;line-height:1.45}.catalog-note{padding:11px 12px;border-left:3px solid var(--blue);border-radius:8px;background:#f2f7ff;color:#36516f;font-size:11px;line-height:1.55}
-      @media(max-width:700px){.catalog-toolbar{grid-template-columns:1fr}.catalog-result{grid-template-columns:1fr}.catalog-result-side{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.catalog-detail-grid{grid-template-columns:1fr}}
+      .product-suggestion-section{border-top:5px solid #f4f7fb;background:#fff}
+      .product-suggestion-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 13px;border-bottom:1px solid var(--line);background:#f8fbff;color:#1f4f87;font-size:9px;font-weight:900;letter-spacing:.085em}
+      .product-suggestion-heading small{color:#74859b;font-size:8px;font-weight:750;letter-spacing:0}
+      .suggestions .product-suggestion{min-height:68px;align-items:flex-start}
+      .product-suggestion-main{display:flex;min-width:0;align-items:flex-start;gap:10px}
+      .product-suggestion-icon{display:grid;width:34px;height:34px;place-items:center;flex:0 0 auto;border-radius:9px;background:#eaf3ff;color:#1459aa;font-size:10px;font-weight:950}
+      .product-suggestion-copy{min-width:0}.product-suggestion-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .product-suggestion-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .product-suggestion-side{display:flex;align-items:flex-end;gap:5px;flex-direction:column;flex:0 0 auto}
+      .product-suggestion-atc{padding:4px 7px;border-radius:7px;background:#eef3f8;color:#415977;font-size:8px;font-weight:900}
+      .product-suggestion-badge{padding:4px 7px;border-radius:999px;background:#ecfdf3;color:#067647;font-size:8px;font-weight:850;white-space:nowrap}
+      .product-suggestion-state{padding:11px 13px;color:#667085;font-size:10px;line-height:1.45}
+      .product-suggestion-state strong{color:#344054}
+      #drugPanel.product-mode{border-color:#b8d3f5;box-shadow:0 18px 48px rgba(25,83,154,.11)}
+      #drugPanel.product-mode .drug-head{border-bottom-color:#d7e6f8}
+      #drugPanel.product-mode .eyebrow{color:#1559ae}
+      #drugPanel.product-mode .data-source-pill{background:#eaf3ff;color:#1559ae}
+      #drugPanel.product-mode .notice{border-left-color:#2b7af0;background:#f2f7ff;color:#36516f}
+      #drugPanel.product-mode .table-wrap{border-color:#d7e3f1}
+      #drugPanel.product-mode tbody td:nth-child(2){font-weight:700;color:#203a5c}
+      .product-status-pill{display:inline-flex;padding:5px 8px;border-radius:999px;background:#ecfdf3;color:#067647;font-size:9px;font-weight:850}
+      @media(max-width:700px){
+        .product-suggestion-heading{align-items:flex-start;flex-direction:column;gap:2px}
+        .suggestions .product-suggestion{align-items:flex-start;gap:8px}
+        .product-suggestion-side{align-items:flex-start}
+      }
     `;
     document.head.appendChild(style);
   }
 
-  function injectNavigation() {
-    if (document.querySelector('[data-product-catalog]')) return;
-    const drugsButton = document.querySelector('.nav-item[data-action="drugs"]');
-    if (!drugsButton) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'nav-item';
-    button.dataset.productCatalog = 'open';
-    button.innerHTML = '<span class="nav-icon">K</span><span>Produktet në Kosovë</span>';
-    drugsButton.insertAdjacentElement('afterend', button);
+  function catalogAllowedByFilter() {
+    const activeFilter = document.querySelector('#filters button.active')?.dataset.filter || 'all';
+    return ['all', 'generic', 'brand'].includes(activeFilter);
   }
 
-  function injectLaunchCard() {
-    if (document.querySelector('.catalog-launch-card')) return;
-    const categories = document.querySelector('.categories');
-    if (!categories) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'catalog-launch-card';
-    button.dataset.productCatalog = 'open';
-    button.innerHTML = '<span class="bubble cyan">K</span><span><strong>Produktet në Kosovë</strong><small>Emër tregtar, substancë, ATC, formë dhe certifikatë MA</small></span><span class="arrow">→</span>';
-    categories.appendChild(button);
+  function removeProductSuggestions() {
+    suggestions()?.querySelector('.product-suggestion-section')?.remove();
   }
 
-  function openCatalog() {
-    if (!window.openModal) {
-      toast('Moduli nuk është gati. Rifresko faqen.');
-      return;
-    }
-    window.openModal({
-      title: 'Produktet medicinale në Kosovë',
-      subtitle: 'Kërkim në Listën zyrtare të çmimeve të produkteve medicinale – Versioni 1.1.',
-      kicker: 'BURIM ZYRTAR I BRENDSHËM',
-      body: `
-        <form class="catalog-toolbar" id="catalogSearchForm" role="search">
-          <input id="catalogSearchInput" type="search" placeholder="P.sh. ceftriaxone, NovoRapid, J01DD04, MA-…" autocomplete="off" aria-label="Kërko produktin medicinal">
-          <button type="submit">Kërko</button>
-        </form>
-        <div class="catalog-status" id="catalogStatus"><span>Po kontrollohet databaza…</span><strong>Pilot klinik</strong></div>
-        <div class="catalog-results" id="catalogResults"><div class="catalog-empty">Shkruaj të paktën dy shkronja.</div></div>
-        <div class="catalog-note">Ky katalog konfirmon identitetin e produktit, formën, fortësinë, certifikatën MA, çmimin dhe afatin e listës. Nuk konfirmon indikacionin ose dozën klinike.</div>`,
-    });
+  function renderProductSuggestions(rows, query, state = 'ready') {
+    const container = suggestions();
+    const input = searchInput();
+    if (!container || !input || normalize(input.value) !== normalize(query)) return;
 
-    const form = document.querySelector('#catalogSearchForm');
-    const input = document.querySelector('#catalogSearchInput');
-    form?.addEventListener('submit', (event) => {
-      event.preventDefault();
-      searchProducts(input?.value || '', true);
-    });
-    input?.addEventListener('input', () => {
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => searchProducts(input.value), 170);
-    });
-    setTimeout(() => input?.focus(), 60);
-    loadHealth();
+    removeProductSuggestions();
+
+    const section = document.createElement('section');
+    section.className = 'product-suggestion-section';
+    section.setAttribute('aria-label', 'Produkte medicinale në Kosovë');
+
+    const heading = `
+      <div class="product-suggestion-heading">
+        <span>PRODUKTE MEDICINALE NË KOSOVË</span>
+        <small>Lista zyrtare · Versioni 1.1</small>
+      </div>`;
+
+    if (state === 'loading') {
+      section.innerHTML = `${heading}<div class="product-suggestion-state">Duke kontrolluar katalogun e Kosovës…</div>`;
+    } else if (state === 'error') {
+      if (container.querySelector('[data-result-id]')) return;
+      section.innerHTML = `${heading}<div class="product-suggestion-state"><strong>Katalogu i Kosovës nuk u arrit.</strong> Rezultatet klinike lokale vazhdojnë të funksionojnë.</div>`;
+    } else if (!rows.length) {
+      if (container.querySelector('[data-result-id]')) return;
+      section.innerHTML = `${heading}<div class="product-suggestion-state">Nuk u gjet produkt në listën aktuale për “${escapeHTML(query)}”.</div>`;
+    } else {
+      section.innerHTML = heading + rows.slice(0, MAX_RESULTS).map((row) => `
+        <button class="product-suggestion" type="button" role="option" data-kosovo-product="${escapeHTML(row.id)}">
+          <span class="product-suggestion-main">
+            <span class="product-suggestion-icon">KS</span>
+            <span class="product-suggestion-copy">
+              <strong>${escapeHTML(row.trade_name)}</strong>
+              <small>${escapeHTML([row.active_substance, row.strength_text, row.pharmaceutical_form].filter(Boolean).join(' · '))}</small>
+            </span>
+          </span>
+          <span class="product-suggestion-side">
+            <span class="product-suggestion-atc">${escapeHTML(row.atc_code || 'ATC')}</span>
+            <span class="product-suggestion-badge">Produkt i listuar</span>
+          </span>
+        </button>`).join('');
+    }
+
+    container.appendChild(section);
+    container.classList.add('open');
   }
 
-  async function loadHealth() {
-    const status = document.querySelector('#catalogStatus');
-    if (!status) return;
-    try {
-      const data = await fetchJSON(`${API_URL}?mode=health`);
-      status.innerHTML = `<span><strong>${Number(data.visible_products || 0)}</strong> produkte aktive · ${Number(data.atc_codes || 0)} kode ATC</span><strong>Versioni ${escapeHTML(data.version_label || '1.1')}</strong>`;
-    } catch {
-      status.innerHTML = '<span>Katalogu nuk u arrit për momentin.</span><strong>Fallback i sigurt</strong>';
-    }
-  }
+  async function searchProducts(rawQuery, { force = false, showLoading = true } = {}) {
+    const query = String(rawQuery || '').trim();
+    const key = normalize(query);
 
-  async function searchProducts(query, force = false) {
-    const value = String(query || '').trim();
-    const results = document.querySelector('#catalogResults');
-    if (!results) return;
-    if (value.length < 2) {
-      results.innerHTML = '<div class="catalog-empty">Shkruaj të paktën dy shkronja.</div>';
-      return;
+    if (query.length < 2 || !catalogAllowedByFilter()) {
+      removeProductSuggestions();
+      return [];
     }
 
-    const key = normalize(value);
-    if (!force && cache.has(key)) {
-      renderResults(cache.get(key));
-      return;
+    if (!force && resultCache.has(key)) {
+      const cached = resultCache.get(key);
+      renderProductSuggestions(cached, query);
+      return cached;
     }
+
+    if (showLoading) renderProductSuggestions([], query, 'loading');
 
     const sequence = ++latestSequence;
-    results.innerHTML = '<div class="catalog-empty">Duke kërkuar…</div>';
     try {
-      const data = await fetchJSON(`${API_URL}?q=${encodeURIComponent(value)}&limit=30`);
-      if (sequence !== latestSequence) return;
+      const data = await fetchJSON(`${API_URL}?q=${encodeURIComponent(query)}&limit=${MAX_RESULTS}`);
+      if (sequence !== latestSequence) return [];
       const rows = Array.isArray(data.results) ? data.results : [];
-      cache.set(key, rows);
-      renderResults(rows);
+      rows.forEach((row) => productsById.set(String(row.id), row));
+      resultCache.set(key, rows);
+      renderProductSuggestions(rows, query);
+      return rows;
     } catch (error) {
-      if (String(error?.name) === 'AbortError') return;
-      results.innerHTML = '<div class="catalog-empty">Kërkimi nuk u përfundua. Provo përsëri.</div>';
+      if (String(error?.name) === 'AbortError') return [];
+      if (sequence === latestSequence) renderProductSuggestions([], query, 'error');
+      return [];
     }
   }
 
-  function renderResults(rows) {
-    const container = document.querySelector('#catalogResults');
-    if (!container) return;
-    if (!rows.length) {
-      container.innerHTML = '<div class="catalog-empty">Nuk u gjet produkt në pilotin aktual. Importi i plotë do ta zgjerojë katalogun.</div>';
+  function scheduleSearch() {
+    clearTimeout(searchTimer);
+    const query = searchInput()?.value || '';
+    if (String(query).trim().length < 2 || !catalogAllowedByFilter()) {
+      activeController?.abort();
+      removeProductSuggestions();
       return;
     }
-    container.innerHTML = rows.map((row) => `
-      <button class="catalog-result" type="button" data-catalog-product="${escapeHTML(row.id)}">
-        <span><h3>${escapeHTML(row.trade_name)}</h3><p>${escapeHTML(row.active_substance)} · ${escapeHTML(row.strength_text)} · ${escapeHTML(row.pharmaceutical_form)}</p><small>${escapeHTML(row.marketing_authorization_holder || 'Bartësi në verifikim')} · ${escapeHTML(row.ma_certificate || 'Pa certifikatë')}</small></span>
-        <span class="catalog-result-side"><span class="catalog-code">${escapeHTML(row.atc_code || 'ATC')}</span><span class="catalog-badge">Vlefshëm</span>${row.retail_price != null ? `<span class="catalog-price">€${Number(row.retail_price).toFixed(2)}</span>` : ''}</span>
-      </button>`).join('');
+    searchTimer = setTimeout(() => searchProducts(query), SEARCH_DELAY);
   }
 
-  async function openProductDetail(id) {
-    const previousBody = document.querySelector('#modalBody')?.innerHTML || '';
-    const modalBody = document.querySelector('#modalBody');
-    if (modalBody) modalBody.innerHTML = '<div class="catalog-empty">Duke hapur produktin…</div>';
+  function setTableHeadings(labels) {
+    const cells = [...document.querySelectorAll('#drugPanel thead th')];
+    labels.forEach((label, index) => {
+      if (cells[index]) cells[index].textContent = label;
+    });
+  }
+
+  function leaveProductMode() {
+    if (!window.DozaKSProductMode && !activeProductId) return;
+    window.DozaKSProductMode = false;
+    activeProductId = '';
+    const panel = document.querySelector('#drugPanel');
+    panel?.classList.remove('product-mode');
+    document.querySelector('#favoriteButton')?.removeAttribute('hidden');
+    document.querySelector('#openDetails')?.removeAttribute('hidden');
+    document.querySelector('.drug-links')?.removeAttribute('hidden');
+    const sourcePill = document.querySelector('.data-source-pill');
+    if (sourcePill) sourcePill.innerHTML = '<i></i> Neon · vetëm të publikuarat';
+    const status = document.querySelector('.clinical-summary-strip div:first-child strong');
+    if (status) status.textContent = 'Në verifikim';
+    setTableHeadings(['Indikacioni / moduli', 'Të rriturit', 'Fëmijët', 'Statusi']);
+  }
+
+  function saveProductHistory(row) {
     try {
-      const row = await fetchJSON(`${API_URL}?mode=detail&id=${encodeURIComponent(id)}`);
-      window.openModal?.({
-        title: row.trade_name,
-        subtitle: `${row.active_substance} · ${row.atc_code}`,
-        kicker: 'PRODUKT MEDICINAL',
-        body: `<div class="catalog-detail"><section class="catalog-detail-header"><h3>${escapeHTML(row.trade_name)}</h3><p>${escapeHTML(row.active_substance)} · ${escapeHTML(row.strength_text)} · ${escapeHTML(row.pharmaceutical_form)}</p></section><div class="catalog-detail-grid"><div><span>ATC</span><strong>${escapeHTML(row.atc_code)}</strong></div><div><span>Statusi</span><strong>${escapeHTML(row.product_status || '—')}</strong></div><div><span>Paketimi</span><strong>${escapeHTML(row.package_size || '—')}</strong></div><div><span>Certifikata MA</span><strong>${escapeHTML(row.ma_certificate || '—')}</strong></div><div><span>Bartësi</span><strong>${escapeHTML(row.marketing_authorization_holder || '—')}</strong></div><div><span>Prodhuesi</span><strong>${escapeHTML(row.manufacturer || '—')}</strong></div><div><span>Vlefshmëria</span><strong>${escapeHTML(row.valid_from || '—')} – ${escapeHTML(row.valid_to || '—')}</strong></div><div><span>Çmimi me pakicë</span><strong>${row.retail_price != null ? `€${Number(row.retail_price).toFixed(2)}` : '—'}</strong></div></div><div class="catalog-note">Burimi: ${escapeHTML(row.source_title || 'Lista zyrtare')} · Versioni ${escapeHTML(row.version_label || '1.1')}. Për përdorim klinik verifiko indikacionin, dozën, SPC-në dhe karakteristikat e pacientit.</div></div>`,
-      });
+      const current = JSON.parse(localStorage.getItem('dozaks-history') || '[]');
+      const id = `product:${row.id}`;
+      const entry = {
+        id,
+        name: row.trade_name,
+        type: 'Produkt medicinal në Kosovë',
+        time: new Date().toISOString(),
+      };
+      localStorage.setItem('dozaks-history', JSON.stringify([entry, ...current.filter((item) => item.id !== id)].slice(0, 30)));
+      window.renderRecent?.();
     } catch {
-      if (modalBody) modalBody.innerHTML = previousBody;
-      toast('Produkti nuk u hap.');
+      // History is optional; the clinical result must still open.
     }
   }
 
-  function handleClick(event) {
-    const launch = event.target.closest('[data-product-catalog]');
-    if (launch) {
-      event.preventDefault();
-      openCatalog();
+  function renderProductCard(row) {
+    if (!row) return;
+    window.DozaKSProductMode = true;
+    activeProductId = String(row.id);
+    productsById.set(activeProductId, row);
+
+    const input = searchInput();
+    if (input) input.value = row.trade_name || row.active_substance || '';
+    document.querySelector('#clearSearch')?.classList.add('visible');
+    suggestions()?.classList.remove('open');
+
+    const panel = document.querySelector('#drugPanel');
+    panel?.classList.add('product-mode');
+
+    const itemType = document.querySelector('#itemType');
+    const drugName = document.querySelector('#drugName');
+    const drugGroup = document.querySelector('#drugGroup');
+    const notice = document.querySelector('#itemNotice');
+    const formChips = document.querySelector('#formChips');
+    const doseRows = document.querySelector('#doseRows');
+    const sourcePill = document.querySelector('.data-source-pill');
+    const status = document.querySelector('.clinical-summary-strip div:first-child strong');
+
+    if (itemType) itemType.textContent = 'PRODUKT MEDICINAL NË KOSOVË';
+    if (drugName) drugName.textContent = row.trade_name || 'Produkt medicinal';
+    if (drugGroup) drugGroup.textContent = [row.active_substance, row.atc_code].filter(Boolean).join(' · ');
+    if (sourcePill) sourcePill.innerHTML = `<i></i> Lista zyrtare · Versioni ${escapeHTML(row.version_label || '1.1')}`;
+    if (status) status.textContent = 'I listuar';
+
+    const chips = [row.strength_text, row.pharmaceutical_form, row.package_size].filter(Boolean);
+    if (formChips) formChips.innerHTML = chips.map((value, index) => `<button type="button" class="${index === 0 ? 'active' : ''}" disabled>${escapeHTML(value)}</button>`).join('');
+
+    if (notice) {
+      notice.textContent = 'Kjo kartelë konfirmon identitetin dhe listimin e produktit në burimin zyrtar. Indikacioni, doza, intervali dhe kohëzgjatja kërkojnë verifikim klinik të veçantë.';
+    }
+
+    setTableHeadings(['Fusha', 'Vlera', 'Detaj shtesë', 'Statusi']);
+    if (doseRows) {
+      doseRows.innerHTML = `
+        <tr><td>Produkti</td><td>${escapeHTML(row.trade_name || '—')}</td><td>${escapeHTML(row.active_substance || '—')}</td><td><span class="product-status-pill">I listuar</span></td></tr>
+        <tr><td>Forma dhe paketimi</td><td>${escapeHTML([row.strength_text, row.pharmaceutical_form].filter(Boolean).join(' · ') || '—')}</td><td>${escapeHTML(row.package_size || '—')}</td><td><span class="product-status-pill">Burim zyrtar</span></td></tr>
+        <tr><td>Autorizimi</td><td>${escapeHTML(row.ma_certificate || '—')}</td><td>${escapeHTML(row.marketing_authorization_holder || row.manufacturer || '—')}</td><td><span class="product-status-pill">I indeksuar</span></td></tr>
+        <tr><td>Vlefshmëria / çmimi</td><td>${escapeHTML(`${formatDate(row.valid_from)} – ${formatDate(row.valid_to)}`)}</td><td>${escapeHTML(formatPrice(row.retail_price))}</td><td><span class="product-status-pill">Versioni ${escapeHTML(row.version_label || '1.1')}</span></td></tr>`;
+    }
+
+    document.querySelector('#favoriteButton')?.setAttribute('hidden', '');
+    document.querySelector('#openDetails')?.setAttribute('hidden', '');
+    document.querySelector('.drug-links')?.setAttribute('hidden', '');
+
+    saveProductHistory(row);
+    panel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast(`${row.trade_name} u hap nga lista zyrtare.`);
+  }
+
+  async function openProductById(id) {
+    const productId = String(id || '').replace(/^product:/, '');
+    if (!productId) return;
+    const cached = productsById.get(productId);
+    if (cached) {
+      renderProductCard(cached);
       return;
     }
-    const product = event.target.closest('[data-catalog-product]');
-    if (product) openProductDetail(product.dataset.catalogProduct);
+
+    try {
+      const row = await fetchJSON(`${API_URL}?mode=detail&id=${encodeURIComponent(productId)}`);
+      productsById.set(productId, row);
+      renderProductCard(row);
+    } catch {
+      toast('Produkti nuk u hap. Provo përsëri.');
+    }
+  }
+
+  function getTopCachedResult(query) {
+    return resultCache.get(normalize(query))?.[0] || null;
+  }
+
+  function handleClickCapture(event) {
+    const product = event.target.closest('[data-kosovo-product]');
+    if (product) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openProductById(product.dataset.kosovoProduct);
+      return;
+    }
+
+    const historyProduct = event.target.closest('[data-open-item^="product:"]');
+    if (historyProduct) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.closeModal?.();
+      openProductById(historyProduct.dataset.openItem);
+      return;
+    }
+
+    if (event.target.closest('[data-result-id], [data-open-item]:not([data-open-item^="product:"]), #popularList button, #recentList button:not([data-open-item^="product:"])')) {
+      leaveProductMode();
+    }
+
+    if (event.target.closest('#clearSearch')) {
+      activeController?.abort();
+      removeProductSuggestions();
+    }
+
+    if (event.target.closest('#filters button')) {
+      setTimeout(scheduleSearch, 0);
+    }
+  }
+
+  function handleKeydownCapture(event) {
+    if (event.target !== searchInput() || event.key !== 'Enter') return;
+    const highlightedProduct = suggestions()?.querySelector('button.highlight[data-kosovo-product]');
+    if (highlightedProduct) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openProductById(highlightedProduct.dataset.kosovoProduct);
+      return;
+    }
+    leaveProductMode();
+  }
+
+  async function handleSubmitCapture(event) {
+    if (event.target?.id !== 'searchForm') return;
+    const container = suggestions();
+    const highlightedProduct = container?.querySelector('button.highlight[data-kosovo-product]');
+    if (highlightedProduct) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openProductById(highlightedProduct.dataset.kosovoProduct);
+      return;
+    }
+
+    const hasLocalResult = Boolean(container?.querySelector('[data-result-id]'));
+    const query = searchInput()?.value || '';
+    let topProduct = getTopCachedResult(query);
+
+    if (!hasLocalResult && String(query).trim().length >= 2) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!topProduct) {
+        const rows = await searchProducts(query, { force: true, showLoading: true });
+        topProduct = rows[0] || null;
+      }
+      if (topProduct) renderProductCard(topProduct);
+      else toast(`Nuk u gjet produkt për “${query}”.`);
+      return;
+    }
+
+    leaveProductMode();
   }
 
   function start() {
     injectStyles();
-    injectNavigation();
-    injectLaunchCard();
-    document.addEventListener('click', handleClick);
-    window.DozaKSProductCatalog = { open: openCatalog, search: searchProducts };
+    const input = searchInput();
+    if (!input) return;
+
+    input.addEventListener('input', scheduleSearch);
+    input.addEventListener('focus', scheduleSearch);
+    document.addEventListener('click', handleClickCapture, true);
+    document.addEventListener('keydown', handleKeydownCapture, true);
+    document.querySelector('#searchForm')?.addEventListener('submit', handleSubmitCapture, true);
+
+    window.DozaKSProductCatalog = {
+      search: searchProducts,
+      openProduct: openProductById,
+      getTopCachedResult,
+      leaveProductMode,
+    };
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
