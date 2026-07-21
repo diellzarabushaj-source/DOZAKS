@@ -10,6 +10,7 @@
     { "src": "ux.js", "use": "@vercel/static" },
     { "src": "drug-card-sync.js", "use": "@vercel/static" },
     { "src": "product-catalog.js", "use": "@vercel/static" },
+    { "src": "contraindications-ui.js", "use": "@vercel/static" },
     { "src": "sw.js", "use": "@vercel/static" }
   ],
   "rewrites": [
