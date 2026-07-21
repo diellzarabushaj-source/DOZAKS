@@ -4,12 +4,17 @@
   const API_URL = '/api/clinical-data';
   const REQUEST_TIMEOUT_MS = 5500;
   let lastSuccessfulRefresh = 0;
+  let drugCardRequest = 0;
 
   const normalizeDb = (value = '') => String(value)
     .toLocaleLowerCase('sq')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+
+  const escapeDbHTML = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+  })[char]);
 
   function inferCategory(group = '') {
     const value = normalizeDb(group);
@@ -184,9 +189,7 @@
     const startedAt = performance.now();
     try {
       const data = await fetchJson(`${API_URL}?mode=bootstrap`);
-      if (typeof catalog === 'undefined' || typeof clinicalItems === 'undefined') {
-        throw new Error('DozaKS interface is not ready');
-      }
+      if (typeof catalog === 'undefined' || typeof clinicalItems === 'undefined') throw new Error('DozaKS interface is not ready');
 
       (data.drugs || []).forEach(mergeDrug);
       (data.diagnoses || []).forEach((item) => mergeClinical(item, 'diagnosis'));
@@ -221,11 +224,72 @@
     return fetchJson(`${API_URL}?mode=drug&slug=${encodeURIComponent(slug)}`);
   }
 
+  function currentDrugSlug() {
+    if (typeof state === 'undefined' || typeof catalog === 'undefined') return '';
+    const item = catalog.find((entry) => entry.id === state.selectedId);
+    return item?.slug || item?.id || '';
+  }
+
+  async function renderDrugCard(slug = currentDrugSlug()) {
+    if (!slug) return null;
+    const requestNumber = ++drugCardRequest;
+    const panel = document.querySelector('#drugPanel');
+    panel?.setAttribute('aria-busy', 'true');
+    panel?.classList.add('loading-data');
+
+    try {
+      const data = await getDrugFromDatabase(slug);
+      if (requestNumber !== drugCardRequest || currentDrugSlug() !== slug) return null;
+
+      const forms = Array.isArray(data.forms) ? data.forms : [];
+      const dosingRules = Array.isArray(data.dosingRules) ? data.dosingRules : [];
+      const formContainer = document.querySelector('#formChips');
+      const doseRows = document.querySelector('#doseRows');
+      const notice = document.querySelector('#itemNotice');
+
+      if (forms.length && formContainer) {
+        formContainer.innerHTML = forms.map((form, index) => {
+          const label = [form.form_name, form.strength_text, form.route].filter(Boolean).join(' · ');
+          return `<button type="button" class="${index === 0 ? 'active' : ''}" data-form="${escapeDbHTML(label)}">${escapeDbHTML(label)}</button>`;
+        }).join('');
+      }
+
+      if (dosingRules.length && doseRows) {
+        doseRows.innerHTML = dosingRules.map((rule) => {
+          const population = normalizeDb(rule.population);
+          const dose = [rule.dose_text, rule.interval_text, rule.duration_text].filter(Boolean).join(' · ');
+          const adultDose = population.includes('adult') || population.includes('rritur') ? dose : '—';
+          const childDose = population.includes('child') || population.includes('pediatr') || population.includes('femij') ? dose : '—';
+          const label = [rule.route, rule.population].filter(Boolean).join(' · ') || 'Rregull i verifikuar';
+          return `<tr><td>${escapeDbHTML(label)}</td><td>${escapeDbHTML(adultDose)}</td><td>${escapeDbHTML(childDose)}</td><td><span class="status published">Publikuar</span></td></tr>`;
+        }).join('');
+      }
+
+      if (notice) {
+        notice.classList.toggle('verified', dosingRules.length > 0);
+        notice.textContent = dosingRules.length > 0
+          ? `${dosingRules.length} rregulla dozimi të aprovuara u ngarkuan nga Neon. Verifiko indikacionin dhe burimin para përdorimit.`
+          : 'Kartela është sinkronizuar me Neon. Nuk ka ende dozë numerike të aprovuar për publikim.';
+      }
+      panel?.classList.toggle('has-published-data', dosingRules.length > 0);
+      return data;
+    } catch (error) {
+      if (!String(error?.message || '').includes('404')) console.warn('DozaKS drug detail loading failed', error);
+      return null;
+    } finally {
+      if (requestNumber === drugCardRequest) {
+        panel?.removeAttribute('aria-busy');
+        panel?.classList.remove('loading-data');
+      }
+    }
+  }
+
   window.DozaKSDatabase = {
     refresh: refreshDatabase,
     search: searchDatabase,
     hydrateSearchResults,
     getDrug: getDrugFromDatabase,
+    renderDrugCard,
     health: () => fetchJson(`${API_URL}?mode=health`),
     getLastSuccessfulRefresh: () => lastSuccessfulRefresh,
   };
@@ -235,8 +299,6 @@
   else start();
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && navigator.onLine && Date.now() - lastSuccessfulRefresh > 5 * 60 * 1000) {
-      refreshDatabase({ silent: true });
-    }
+    if (document.visibilityState === 'visible' && navigator.onLine && Date.now() - lastSuccessfulRefresh > 5 * 60 * 1000) refreshDatabase({ silent: true });
   });
 })();
