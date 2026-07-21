@@ -46,7 +46,8 @@ export default async (request: Request, _context: Context): Promise<Response> =>
       SELECT
         to_regclass('public.api_icd_concepts') IS NOT NULL AS has_icd,
         to_regclass('public.api_current_essential_entries') IS NOT NULL AS has_essential,
-        to_regclass('public.api_diagnosis_icd_mappings') IS NOT NULL AS has_mappings
+        to_regclass('public.api_diagnosis_icd_mappings') IS NOT NULL AS has_mappings,
+        to_regclass('public.api_current_registered_products') IS NOT NULL AS has_registry
     `]);
     const availability = availabilityRows[0] || {};
 
@@ -87,6 +88,35 @@ export default async (request: Request, _context: Context): Promise<Response> =>
         LIMIT ${limit}
       `]);
       return json({ system, results });
+    }
+
+    if (mode === 'registered') {
+      if (!availability.has_registry) return json({ results: [], pendingMigration: true });
+      const query = (url.searchParams.get('q') || '').trim();
+      const essentialOnly = url.searchParams.get('essential') === 'true';
+      const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 100), 1), 250);
+      const pattern = `%${query}%`;
+      const [results] = await queryAsPublicApi(sql, [sql`
+        SELECT product_id, drug_id, drug_slug, generic_name, therapeutic_group, atc_code,
+               brand_name, dosage_form, strength_text, pack_text, manufacturer,
+               manufacturer_country, authorization_number, authorization_holder,
+               authorized_from, authorized_until, authorization_status, registry_source,
+               registry_version, source_page, is_essential
+        FROM public.api_current_registered_products
+        WHERE (${essentialOnly} = false OR is_essential = true)
+          AND (
+            ${query} = ''
+            OR generic_name ILIKE ${pattern}
+            OR brand_name ILIKE ${pattern}
+            OR atc_code ILIKE ${pattern}
+            OR strength_text ILIKE ${pattern}
+            OR similarity(lower(generic_name), lower(${query})) > 0.25
+            OR similarity(lower(brand_name), lower(${query})) > 0.25
+          )
+        ORDER BY generic_name, brand_name, dosage_form, strength_text
+        LIMIT ${limit}
+      `]);
+      return json({ results, sourcePolicy: 'Only current active Kosovo marketing authorizations are selectable.' });
     }
 
     if (mode === 'essential') {
