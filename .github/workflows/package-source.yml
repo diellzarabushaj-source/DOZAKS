@@ -1,0 +1,25 @@
+name: Package DozaKS source
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dozaks-source
+          path: .
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
