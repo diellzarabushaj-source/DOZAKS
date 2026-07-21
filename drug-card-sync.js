@@ -4,6 +4,19 @@
   let lastSlug = '';
   let lastLoadedAt = 0;
 
+  function exposeClinicalCatalog() {
+    try {
+      if (typeof catalog !== 'undefined') window.catalog = catalog;
+      if (typeof clinicalItems !== 'undefined') window.clinicalItems = clinicalItems;
+      if (typeof openModal === 'function') window.openModal = openModal;
+      if (typeof closeModal === 'function') window.closeModal = closeModal;
+      if (typeof openItem === 'function') window.openItem = openItem;
+      if (typeof showToast === 'function') window.showToast = showToast;
+    } catch (error) {
+      console.warn('DozaKS clinical catalog bridge failed', error);
+    }
+  }
+
   function activeSlug() {
     if (typeof state === 'undefined' || typeof catalog === 'undefined') return '';
     const item = catalog.find((entry) => entry.id === state.selectedId);
@@ -20,6 +33,7 @@
   }
 
   function init() {
+    exposeClinicalCatalog();
     const drugName = document.querySelector('#drugName');
     if (drugName) new MutationObserver(() => refreshActiveDrug(true)).observe(drugName, { childList: true, characterData: true, subtree: true });
 
@@ -30,7 +44,10 @@
     });
 
     document.querySelector('#searchForm')?.addEventListener('submit', () => setTimeout(() => refreshActiveDrug(true), 40));
-    window.addEventListener('dozaks:database-ready', () => refreshActiveDrug(true));
+    window.addEventListener('dozaks:database-ready', () => {
+      exposeClinicalCatalog();
+      refreshActiveDrug(true);
+    });
     setTimeout(() => refreshActiveDrug(true), 80);
   }
 
