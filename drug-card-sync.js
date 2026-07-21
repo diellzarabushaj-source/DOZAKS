@@ -15,13 +15,24 @@
     }
   }
 
-  function loadClinicalSafety() {
-    if (document.querySelector('script[data-dozaks-clinical-safety]')) return;
+  function loadWorkbenchRuntime() {
+    if (document.querySelector('script[data-dozaks-workbench-runtime]')) return;
     const script = document.createElement('script');
-    script.src = '/contraindications-ui.js';
+    script.src = '/clinical-workbench-runtime.js';
     script.defer = true;
-    script.dataset.dozaksClinicalSafety = 'true';
+    script.dataset.dozaksWorkbenchRuntime = 'true';
     document.head.appendChild(script);
+  }
+
+  function loadClinicalSafety() {
+    if (!document.querySelector('script[data-dozaks-clinical-safety]')) {
+      const script = document.createElement('script');
+      script.src = '/contraindications-ui.js';
+      script.defer = true;
+      script.dataset.dozaksClinicalSafety = 'true';
+      document.head.appendChild(script);
+    }
+    loadWorkbenchRuntime();
   }
 
   function loadProductCatalog() {
