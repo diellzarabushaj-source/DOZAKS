@@ -56,7 +56,7 @@ export default async function handler(req, res) {
 
   try {
     if (mode === 'health') {
-      const [drugRows, productRows] = await asPublicApi(sql, [
+      const [drugRows, productRows, contraindicationRows] = await asPublicApi(sql, [
         sql`
           SELECT count(*)::int AS visible_drugs,
                  count(DISTINCT atc_code)::int AS atc_codes,
@@ -67,8 +67,14 @@ export default async function handler(req, res) {
           FROM public.api_current_drug_catalog
         `,
         sql`SELECT count(*)::int AS visible_products FROM public.api_current_product_catalog`,
+        sql`SELECT count(*)::int AS published_contraindications FROM public.api_published_catalog_contraindications`,
       ]);
-      return send(res, 200, { ok: true, ...(drugRows[0] || {}), ...(productRows[0] || {}) }, true);
+      return send(res, 200, {
+        ok: true,
+        ...(drugRows[0] || {}),
+        ...(productRows[0] || {}),
+        ...(contraindicationRows[0] || {}),
+      }, true);
     }
 
     if (mode === 'facets') {
@@ -123,6 +129,39 @@ export default async function handler(req, res) {
       }, true);
     }
 
+    if (mode === 'contraindications') {
+      const drugId = textParam(req.query?.drugId);
+      const productId = textParam(req.query?.productId);
+      if (!drugId && !productId) {
+        return send(res, 400, { error: 'Missing drugId or productId' });
+      }
+
+      const [rows] = await asPublicApi(sql, [sql`
+        SELECT id, catalog_drug_id, product_id, factor_type, severity,
+               condition_code, condition_label, rule_json, display_text,
+               version_number, reviewed_at, source_title,
+               source_organization, source_url, publication_year
+        FROM public.api_published_catalog_contraindications
+        WHERE (${drugId} = '' OR catalog_drug_id = ${drugId})
+          AND (
+            ${productId} = ''
+            OR product_id IS NULL
+            OR product_id = ${productId}
+          )
+        ORDER BY
+          CASE severity WHEN 'absolute' THEN 0 WHEN 'relative' THEN 1 ELSE 2 END,
+          factor_type,
+          condition_label
+      `]);
+
+      return send(res, 200, {
+        drugId: drugId || null,
+        productId: productId || null,
+        contraindications: rows,
+        completeness: rows.length ? 'published-data-available' : 'no-published-data',
+      }, true);
+    }
+
     if (mode === 'detail') {
       const id = textParam(req.query?.id);
       if (!id) return send(res, 400, { error: 'Missing product id' });
@@ -136,7 +175,7 @@ export default async function handler(req, res) {
     if (mode === 'drug-detail' || mode === 'products-by-drug') {
       const id = textParam(req.query?.id);
       if (!id) return send(res, 400, { error: 'Missing drug id' });
-      const [drugRows, productRows] = await asPublicApi(sql, [
+      const [drugRows, productRows, contraindicationRows] = await asPublicApi(sql, [
         sql`
           SELECT id, generic_name, normalized_name, atc_code, product_count,
                  pharmaceutical_forms, strengths, valid_from, valid_to,
@@ -156,9 +195,26 @@ export default async function handler(req, res) {
           ORDER BY trade_name, pharmaceutical_form, strength_text
           LIMIT 250
         `,
+        sql`
+          SELECT id, catalog_drug_id, product_id, factor_type, severity,
+                 condition_code, condition_label, rule_json, display_text,
+                 version_number, reviewed_at, source_title,
+                 source_organization, source_url, publication_year
+          FROM public.api_published_catalog_contraindications
+          WHERE catalog_drug_id = ${id}
+          ORDER BY
+            CASE severity WHEN 'absolute' THEN 0 WHEN 'relative' THEN 1 ELSE 2 END,
+            factor_type,
+            condition_label
+        `,
       ]);
       if (!drugRows[0]) return send(res, 404, { error: 'Drug not found' });
-      return send(res, 200, { drug: drugRows[0], products: productRows }, true);
+      return send(res, 200, {
+        drug: drugRows[0],
+        products: productRows,
+        contraindications: contraindicationRows,
+        safetyCompleteness: contraindicationRows.length ? 'published-data-available' : 'no-published-data',
+      }, true);
     }
 
     const query = textParam(req.query?.q);
