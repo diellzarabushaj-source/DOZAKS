@@ -2,70 +2,88 @@
 <html lang="sq">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="DozaKS – platformë klinike praktike për profesionistë shëndetësorë në Kosovë." />
   <meta name="theme-color" content="#071a35" />
+  <meta name="color-scheme" content="light" />
   <title>DozaKS — Platforma Klinike</title>
+  <link rel="preload" href="app.css" as="style" />
   <link rel="stylesheet" href="app.css" />
 </head>
 <body>
+  <a class="skip-link" href="#mainContent">Kalo te përmbajtja</a>
+
   <div class="app">
-    <button class="backdrop" id="sidebarBackdrop" aria-label="Mbyll menunë"></button>
+    <button class="backdrop" id="sidebarBackdrop" type="button" aria-label="Mbyll menunë"></button>
 
     <aside class="sidebar" id="sidebar" aria-label="Navigimi kryesor">
       <button class="brand" type="button" data-action="home" aria-label="DozaKS – faqja kryesore">
-        <span class="brand-mark">✚</span>
+        <span class="brand-mark" aria-hidden="true">✚</span>
         <span><strong>Doza<span>KS</span></strong><small>VENDIMI I DUHUR. PACIENTI I SIGURT.</small></span>
       </button>
 
       <nav>
-        <button class="nav-item active" type="button" data-action="home"><span class="nav-icon">⌂</span>Faqja kryesore</button>
+        <button class="nav-item active" type="button" data-action="home"><span class="nav-icon">⌂</span><span>Faqja kryesore</span></button>
         <div class="nav-label">KËRKIM &amp; REFERENCA</div>
-        <button class="nav-item" type="button" data-action="search"><span class="nav-icon">⌕</span>Kërkim inteligjent</button>
-        <button class="nav-item" type="button" data-action="drugs"><span class="nav-icon">◉</span>Barnat A–Z</button>
-        <button class="nav-item" type="button" data-action="diagnoses"><span class="nav-icon">▤</span>Diagnozat &amp; simptomat</button>
-        <button class="nav-item" type="button" data-action="quick-dose"><span class="nav-icon">ϟ</span>Doza të shpejta</button>
-        <button class="nav-item" type="button" data-action="interactions"><span class="nav-icon">⇄</span>Interaksionet</button>
-        <button class="nav-item" type="button" data-action="renal-adjustment"><span class="nav-icon">◌</span>Rregullimi renal</button>
-        <button class="nav-item" type="button" data-action="pregnancy"><span class="nav-icon">♡</span>Shtatzënia &amp; Gjidhënia</button>
+        <button class="nav-item" type="button" data-action="search"><span class="nav-icon">⌕</span><span>Kërkim inteligjent</span><kbd>⌘K</kbd></button>
+        <button class="nav-item" type="button" data-action="drugs"><span class="nav-icon">◉</span><span>Barnat A–Z</span></button>
+        <button class="nav-item" type="button" data-action="diagnoses"><span class="nav-icon">▤</span><span>Diagnozat &amp; simptomat</span></button>
+        <button class="nav-item" type="button" data-action="quick-dose"><span class="nav-icon">ϟ</span><span>Doza të shpejta</span></button>
+        <button class="nav-item" type="button" data-action="interactions"><span class="nav-icon">⇄</span><span>Interaksionet</span></button>
+        <button class="nav-item" type="button" data-action="renal-adjustment"><span class="nav-icon">◌</span><span>Rregullimi renal</span></button>
+        <button class="nav-item" type="button" data-action="pregnancy"><span class="nav-icon">♡</span><span>Shtatzënia &amp; Gjidhënia</span></button>
 
         <div class="nav-label">MJETET KLINIKE</div>
-        <button class="nav-item" type="button" data-action="calc-mgkg"><span class="nav-icon">∑</span>Kalkulator mg/kg</button>
-        <button class="nav-item" type="button" data-action="calc-infusion"><span class="nav-icon">⌁</span>Kalkulator infuzioni</button>
-        <button class="nav-item" type="button" data-action="calc-renal"><span class="nav-icon">≋</span>Kalkulator CrCl / eGFR</button>
-        <button class="nav-item" type="button" data-action="calc-bsa"><span class="nav-icon">□</span>Kalkulator BSA</button>
+        <button class="nav-item" type="button" data-action="calc-mgkg"><span class="nav-icon">∑</span><span>Kalkulator mg/kg</span></button>
+        <button class="nav-item" type="button" data-action="calc-infusion"><span class="nav-icon">⌁</span><span>Kalkulator infuzioni</span></button>
+        <button class="nav-item" type="button" data-action="calc-renal"><span class="nav-icon">≋</span><span>Kalkulator CrCl / eGFR</span></button>
+        <button class="nav-item" type="button" data-action="calc-bsa"><span class="nav-icon">□</span><span>Kalkulator BSA</span></button>
 
         <div class="nav-label">URGJENCA</div>
-        <button class="nav-item danger" type="button" data-action="emergency"><span class="nav-icon">!</span>Protokollet e urgjencës</button>
+        <button class="nav-item danger" type="button" data-action="emergency"><span class="nav-icon">!</span><span>Protokollet e urgjencës</span></button>
       </nav>
 
-      <div class="source-note"><span>✓</span><span>Përmbajtja klinike publikohet vetëm pas verifikimit nga redaksia mjekësore.</span></div>
+      <div class="sidebar-footer">
+        <div class="source-note"><span aria-hidden="true">✓</span><span>Publikohen vetëm të dhënat e aprovuara nga redaksia mjekësore.</span></div>
+        <span class="sidebar-version">DozaKS MVP · 2026</span>
+      </div>
     </aside>
 
-    <main class="main" id="mainContent">
+    <main class="main" id="mainContent" tabindex="-1">
       <header class="topbar">
         <button class="menu" id="menuButton" type="button" aria-label="Hap menunë">☰</button>
-        <div class="heading"><h1>Platforma Klinike e Dozave dhe Barnave</h1><p>Vetëm për profesionistë shëndetësorë në Kosovë</p></div>
+        <div class="heading">
+          <h1>DozaKS <span class="heading-context">· Hapësira klinike</span></h1>
+          <p>Vetëm për profesionistë shëndetësorë <span id="databaseStatus" class="database-status" data-state="loading" role="status" aria-live="polite">● Neon: duke u lidhur</span></p>
+        </div>
         <div class="top-actions">
-          <button type="button" data-action="saved">☆ <span>Të ruajturat</span><b class="counter" id="savedCount">0</b></button>
-          <button type="button" data-action="history">◴ <span>Historiku</span></button>
-          <button type="button" data-action="notifications">♢ <span>Njoftimet</span><b class="counter">3</b></button>
+          <button class="focus-toggle" id="focusModeButton" type="button" aria-pressed="false" title="Fshih panelet dytësore"><span aria-hidden="true">◎</span><span>Fokus klinik</span></button>
+          <button type="button" data-action="saved" title="Të ruajturat">☆ <span>Të ruajturat</span><b class="counter" id="savedCount">0</b></button>
+          <button type="button" data-action="history" title="Historiku">◴ <span>Historiku</span></button>
+          <button type="button" data-action="notifications" title="Njoftimet">♢ <span>Njoftimet</span><b class="counter">3</b></button>
           <button class="profile" type="button" data-action="profile"><span class="avatar" id="profileAvatar">MD</span><span><strong id="profileName">Profili i mjekut</strong><small id="profileRole">Profesionist shëndetësor</small></span></button>
         </div>
       </header>
 
       <div class="content">
-        <section class="hero" id="searchSection">
-          <div class="hero-copy"><h2>Çfarë po kërkon?</h2><p>Kërko simptomën, diagnozën, barin ose emrin tregtar…</p></div>
-          <div class="search-row">
-            <form class="search-box" id="searchForm">
-              <span aria-hidden="true">⌕</span>
-              <input id="searchInput" type="search" placeholder="P.sh. dhimbje fyti, amoxicillin, Augmentin, pneumoni…" autocomplete="off" aria-label="Kërko në DozaKS" />
-              <button class="clear-search" id="clearSearch" type="button" aria-label="Pastro kërkimin">×</button>
-              <div class="suggestions" id="suggestions" role="listbox"></div>
-            </form>
-            <button class="advanced" id="advancedButton" type="button">☷ Kërkim i zgjeruar</button>
+        <section class="hero" id="searchSection" aria-labelledby="searchTitle">
+          <div class="hero-copy">
+            <span class="hero-eyebrow">KËRKIM UNIVERSAL</span>
+            <h2 id="searchTitle">Çfarë të duhet tani?</h2>
+            <p>Shkruaj barin, emrin tregtar, diagnozën ose simptomën. Rezultati më i përshtatshëm shfaqet i pari.</p>
           </div>
+
+          <div class="search-row">
+            <form class="search-box" id="searchForm" role="search">
+              <span class="search-icon" aria-hidden="true">⌕</span>
+              <input id="searchInput" type="search" placeholder="P.sh. amoxicillin, Augmentin, pneumoni, dhimbje fyti…" autocomplete="off" aria-label="Kërko në DozaKS" aria-controls="suggestions" />
+              <kbd class="shortcut-hint">Ctrl K</kbd>
+              <button class="clear-search" id="clearSearch" type="button" aria-label="Pastro kërkimin">×</button>
+              <div class="suggestions" id="suggestions" role="listbox" aria-label="Rezultatet e kërkimit"></div>
+            </form>
+            <button class="advanced" id="advancedButton" type="button" aria-expanded="false" aria-controls="advancedPanel"><span aria-hidden="true">☷</span> Konteksti klinik</button>
+          </div>
+
           <div class="filters" id="filters" aria-label="Filtro kërkimin">
             <button class="active" type="button" data-filter="all">Të gjitha</button>
             <button type="button" data-filter="symptom">Simptoma</button>
@@ -74,71 +92,109 @@
             <button type="button" data-filter="brand">Emër tregtar</button>
             <button type="button" data-filter="group">Grup terapeutik</button>
           </div>
+
           <div class="advanced-panel" id="advancedPanel">
             <label>Pacienti<select id="patientType"><option value="adult">I rritur</option><option value="child">Fëmijë</option><option value="older">I moshuar</option></select></label>
             <label>Konteksti<select id="careContext"><option value="ambulance">Ambulancë</option><option value="emergency">Urgjencë</option><option value="hospital">Spital</option></select></label>
             <label>Gjendje e veçantë<select id="specialState"><option value="none">Asnjë</option><option value="pregnancy">Shtatzëni</option><option value="breastfeeding">Gjidhënie</option><option value="renal">Insuficiencë renale</option><option value="hepatic">Insuficiencë hepatike</option></select></label>
-            <button class="apply-context" id="applyContext" type="button">Apliko kontekstin</button>
+            <button class="apply-context" id="applyContext" type="button">Apliko</button>
           </div>
-          <div class="context-badge" id="contextBadge" hidden></div>
+
+          <button class="context-badge" id="contextBadge" type="button" aria-label="Ndrysho kontekstin klinik">Konteksti: I rritur · Ambulancë · Asnjë gjendje e veçantë <span>Ndrysho</span></button>
+          <div class="search-confidence"><span aria-hidden="true">✓</span> Kërkimi njeh variante shqip, latinisht, emra tregtarë dhe gabime të zakonshme në shkrim.</div>
         </section>
 
-        <section class="categories" aria-label="Kategoritë kryesore">
-          <button class="category" type="button" data-action="quick-dose"><span class="bubble blue">ϟ</span><span><strong>Doza të shpejta</strong><small>Dozat më të përdorura</small></span><span>→</span></button>
-          <button class="category" type="button" data-action="emergency"><span class="bubble red">!</span><span><strong>Urgjenca</strong><small>Protokollet kryesore</small></span><span>→</span></button>
-          <button class="category" type="button" data-action="antibiotics"><span class="bubble green">◉</span><span><strong>Antibiotikët</strong><small>Terapia empirike</small></span><span>→</span></button>
-          <button class="category" type="button" data-action="pediatrics"><span class="bubble purple">♙</span><span><strong>Pediatria</strong><small>Doza sipas peshës</small></span><span>→</span></button>
-          <button class="category" type="button" data-action="pregnancy"><span class="bubble amber">♡</span><span><strong>Shtatzënia</strong><small>Barnat dhe siguria</small></span><span>→</span></button>
-          <button class="category" type="button" data-action="renal-adjustment"><span class="bubble cyan">◌</span><span><strong>Rregullimi renal</strong><small>Doza sipas eGFR</small></span><span>→</span></button>
+        <section class="quick-section" aria-labelledby="quickTitle">
+          <div class="section-heading"><div><span>QASJE E SHPEJTË</span><h2 id="quickTitle">Mjetet që përdor më shpesh</h2></div><small>Zgjidh një rrugë ose përdor kërkimin sipër.</small></div>
+          <div class="categories">
+            <button class="category" type="button" data-action="quick-dose"><span class="bubble blue">ϟ</span><span><strong>Doza të shpejta</strong><small>Kartelat më të përdorura</small></span><span class="arrow">→</span></button>
+            <button class="category urgent" type="button" data-action="emergency"><span class="bubble red">!</span><span><strong>Urgjenca</strong><small>Checklistat kritike</small></span><span class="arrow">→</span></button>
+            <button class="category" type="button" data-action="antibiotics"><span class="bubble green">◉</span><span><strong>Antibiotikët</strong><small>Sipas grupit</small></span><span class="arrow">→</span></button>
+            <button class="category" type="button" data-action="pediatrics"><span class="bubble purple">♙</span><span><strong>Pediatria</strong><small>Llogaritje sipas peshës</small></span><span class="arrow">→</span></button>
+            <button class="category" type="button" data-action="pregnancy"><span class="bubble amber">♡</span><span><strong>Shtatzënia</strong><small>Statusi i sigurisë</small></span><span class="arrow">→</span></button>
+            <button class="category" type="button" data-action="renal-adjustment"><span class="bubble cyan">◌</span><span><strong>Funksioni renal</strong><small>Rregullimi sipas eGFR</small></span><span class="arrow">→</span></button>
+          </div>
         </section>
 
-        <section class="dashboard">
-          <section class="panel">
-            <div class="panel-heading"><h3>Kërkimet e fundit</h3><button type="button" data-action="history">Shiko të gjitha</button></div>
-            <div class="list" id="recentList"></div>
-          </section>
+        <section class="workspace-section" aria-labelledby="workspaceTitle">
+          <div class="section-heading workspace-heading"><div><span>HAPËSIRA E PUNËS</span><h2 id="workspaceTitle">Për konsultën e tanishme</h2></div><small>Kartela e hapur qëndron në fokus ndërsa mjetet mbeten afër.</small></div>
 
-          <section class="panel">
-            <div class="panel-heading"><h3>Barnat më të kërkuara</h3><button type="button" data-action="drugs">Shiko të gjitha</button></div>
-            <div class="rank" id="popularList"></div>
-          </section>
+          <section class="dashboard">
+            <div class="support-column">
+              <section class="panel recent-panel">
+                <div class="panel-heading"><h3>Kërkimet e fundit</h3><button type="button" data-action="history">Të gjitha</button></div>
+                <div class="list" id="recentList"></div>
+              </section>
 
-          <section class="panel emergency-panel">
-            <div class="panel-heading"><h3>Protokollet e urgjencës</h3><button type="button" data-action="emergency">Të gjitha</button></div>
-            <div class="emergency-list" id="emergencyList"></div>
-          </section>
+              <section class="panel popular-panel">
+                <div class="panel-heading"><h3>Barnat më të kërkuara</h3><button type="button" data-action="drugs">A–Z</button></div>
+                <div class="rank" id="popularList"></div>
+              </section>
 
-          <section class="panel quick-calculator-panel">
-            <div class="panel-heading"><h3>Kalkulatorë të shpejtë</h3></div>
-            <div class="quick-tools">
-              <button type="button" data-action="calc-mgkg"><span class="bubble blue">∑</span><strong>mg/kg</strong><small>Doza sipas peshës</small></button>
-              <button type="button" data-action="calc-infusion"><span class="bubble green">⌁</span><strong>Infuzion</strong><small>mL/orë dhe pika/min</small></button>
-              <button type="button" data-action="calc-renal"><span class="bubble purple">≋</span><strong>CrCl / eGFR</strong><small>Vlerësim renal</small></button>
-              <button type="button" data-action="calc-bsa"><span class="bubble amber">□</span><strong>BSA</strong><small>Sipërfaqja trupore</small></button>
+              <section class="panel emergency-panel">
+                <div class="panel-heading"><h3>Urgjenca</h3><button type="button" data-action="emergency">Të gjitha</button></div>
+                <div class="emergency-list" id="emergencyList"></div>
+              </section>
+
+              <section class="panel quick-calculator-panel">
+                <div class="panel-heading"><h3>Kalkulatorë të shpejtë</h3></div>
+                <div class="quick-tools">
+                  <button type="button" data-action="calc-mgkg"><span class="bubble blue">∑</span><strong>mg/kg</strong><small>Doza sipas peshës</small></button>
+                  <button type="button" data-action="calc-infusion"><span class="bubble green">⌁</span><strong>Infuzion</strong><small>mL/orë dhe pika/min</small></button>
+                  <button type="button" data-action="calc-renal"><span class="bubble purple">≋</span><strong>CrCl / eGFR</strong><small>Vlerësim renal</small></button>
+                  <button type="button" data-action="calc-bsa"><span class="bubble amber">□</span><strong>BSA</strong><small>Sipërfaqja trupore</small></button>
+                </div>
+              </section>
             </div>
-          </section>
 
-          <section class="panel drug-panel" id="drugPanel">
-            <div class="drug-head">
-              <div><span class="eyebrow" id="itemType">BAR GJENERIK</span><h3 id="drugName">Amoxicillin</h3><p id="drugGroup">Antibiotik — Penicilina</p></div>
-              <div class="drug-head-actions"><button class="favorite" id="favoriteButton" type="button" aria-label="Ruaj artikullin">☆</button><button class="detail-button" id="openDetails" type="button">Detajet</button></div>
-            </div>
-            <h4>Format e zakonshme</h4><div class="chips" id="formChips"></div>
-            <div class="notice" id="itemNotice">Përmbajtja e dozimit është e bllokuar në këtë MVP derisa të verifikohet nga redaksia mjekësore dhe të lidhet me burimet zyrtare.</div>
-            <div class="table-wrap"><table><thead><tr><th>Indikacioni / moduli</th><th>Të rriturit</th><th>Fëmijët</th><th>Statusi</th></tr></thead><tbody id="doseRows"></tbody></table></div>
-            <div class="drug-links">
-              <button type="button" data-action="renal-adjustment">Rregullimi renal</button>
-              <button type="button" data-action="interactions">Interaksionet</button>
-              <button type="button" data-action="pregnancy">Shtatzënia</button>
-              <button type="button" data-action="alternatives">Alternativat</button>
-            </div>
+            <section class="panel drug-panel" id="drugPanel" aria-labelledby="drugName">
+              <div class="drug-head">
+                <div>
+                  <div class="drug-meta-line"><span class="eyebrow" id="itemType">BAR GJENERIK</span><span class="data-source-pill"><i></i> Neon · vetëm të publikuarat</span></div>
+                  <h3 id="drugName">Amoxicillin</h3>
+                  <p id="drugGroup">Antibiotik — Penicilina</p>
+                </div>
+                <div class="drug-head-actions">
+                  <button class="focus-card-button" id="focusCardButton" type="button" aria-pressed="false" title="Zgjero kartelën">◎ <span>Fokus</span></button>
+                  <button class="favorite" id="favoriteButton" type="button" aria-label="Ruaj artikullin">☆</button>
+                  <button class="detail-button" id="openDetails" type="button">Detajet</button>
+                </div>
+              </div>
+
+              <div class="clinical-summary-strip">
+                <div><span>Statusi editorial</span><strong>Në verifikim</strong></div>
+                <div><span>Popullata</span><strong id="activePatientSummary">I rritur</strong></div>
+                <div><span>Konteksti</span><strong id="activeCareSummary">Ambulancë</strong></div>
+              </div>
+
+              <h4>Format e zakonshme</h4>
+              <div class="chips" id="formChips"></div>
+              <div class="notice" id="itemNotice">Përmbajtja e dozimit është e bllokuar në këtë MVP derisa të verifikohet nga redaksia mjekësore dhe të lidhet me burimet zyrtare.</div>
+
+              <div class="table-heading"><h4>Doza sipas indikacionit</h4><span>Shfaqen vetëm të dhënat e publikuara</span></div>
+              <div class="table-wrap"><table><thead><tr><th>Indikacioni / moduli</th><th>Të rriturit</th><th>Fëmijët</th><th>Statusi</th></tr></thead><tbody id="doseRows"></tbody></table></div>
+
+              <div class="drug-links" aria-label="Veprime të lidhura">
+                <button type="button" data-action="renal-adjustment">◌ Rregullimi renal</button>
+                <button type="button" data-action="interactions">⇄ Interaksionet</button>
+                <button type="button" data-action="pregnancy">♡ Shtatzënia</button>
+                <button type="button" data-action="alternatives">↔ Alternativat</button>
+              </div>
+            </section>
           </section>
         </section>
 
-        <div class="safety"><span>⚠</span><span>DozaKS është mjet mbështetës për profesionistë shëndetësorë, jo zëvendësim i gjykimit klinik, protokollit institucional ose verifikimit farmaceutik.</span><span>MVP 2026</span></div>
+        <div class="safety"><span aria-hidden="true">⚠</span><span><strong>Kontroll klinik:</strong> DozaKS mbështet vendimin, por nuk zëvendëson gjykimin klinik, SPC-në, protokollin institucional ose verifikimin farmaceutik.</span><span>MVP 2026</span></div>
       </div>
     </main>
   </div>
+
+  <nav class="mobile-dock" aria-label="Veprimet e shpejta">
+    <button type="button" data-action="search"><span>⌕</span><small>Kërko</small></button>
+    <button type="button" data-action="quick-dose"><span>ϟ</span><small>Doza</small></button>
+    <button class="dock-emergency" type="button" data-action="emergency"><span>!</span><small>Urgjenca</small></button>
+    <button type="button" data-action="calc-mgkg"><span>∑</span><small>mg/kg</small></button>
+  </nav>
 
   <div class="modal-backdrop" id="modalBackdrop" hidden></div>
   <section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
@@ -150,5 +206,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="app.js" defer></script>
   <script src="db-client.js" defer></script>
+  <script src="ux.js" defer></script>
 </body>
 </html>
