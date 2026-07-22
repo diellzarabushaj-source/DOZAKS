@@ -1,6 +1,8 @@
 import { neon } from '@neondatabase/serverless';
+import { buildCatalogFormulaClause, parseCatalogFormula } from '../lib/catalog-formula.js';
 
 const DATABASE_ENV_KEYS = ['DATABASE_URL', 'POSTGRES_URL', 'NEON_DATABASE_URL'];
+const NETLIFY_FALLBACK = 'https://mjeku-ks.netlify.app/api/product-catalog';
 
 function connectionString() {
   for (const key of DATABASE_ENV_KEYS) {
@@ -20,7 +22,7 @@ function normalizeQuery(value = '') {
 }
 
 function textParam(value) {
-  return String(value || '').trim();
+  return String(Array.isArray(value) ? value[0] : value || '').trim();
 }
 
 function send(res, status, payload, cache = false) {
@@ -40,15 +42,52 @@ async function asPublicApi(sql, queries) {
   return rows.slice(1);
 }
 
+async function proxyToNetlify(req, res) {
+  const source = new URL(req.url || '/', 'https://dozaks.local');
+  const target = new URL(NETLIFY_FALLBACK);
+  source.searchParams.forEach((value, key) => target.searchParams.append(key, value));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6500);
+  try {
+    const response = await fetch(target, {
+      method: 'GET',
+      headers: { accept: 'application/json' },
+      signal: controller.signal,
+    });
+    const body = await response.text();
+    res.statusCode = response.status;
+    res.setHeader('content-type', response.headers.get('content-type') || 'application/json; charset=utf-8');
+    res.setHeader('cache-control', response.ok ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=180' : 'no-store');
+    res.end(body);
+  } catch (error) {
+    console.error('Vercel catalog fallback error', error);
+    send(res, 503, { error: 'Product catalog backend is temporarily unavailable' });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return send(res, 405, { error: 'Method not allowed' });
 
+  const formulaRaw = textParam(req.query?.formula);
+  let parsedFormula;
+  try {
+    parsedFormula = parseCatalogFormula(formulaRaw);
+  } catch (error) {
+    return send(res, 400, { error: String(error?.message || error), code: 'INVALID_FORMULA' });
+  }
+
   const databaseUrl = connectionString();
   if (!databaseUrl) {
-    return send(res, 503, {
-      error: 'Database connection is not configured',
-      requiredEnvironmentVariable: 'DATABASE_URL',
-    });
+    if (parsedFormula.rules.length) {
+      return send(res, 503, {
+        error: 'Formula Engine requires the direct Neon connection on Vercel',
+        code: 'FORMULA_DATABASE_NOT_CONFIGURED',
+      });
+    }
+    return proxyToNetlify(req, res);
   }
 
   const sql = neon(databaseUrl);
@@ -120,21 +159,13 @@ export default async function handler(req, res) {
           LIMIT 60
         `,
       ]);
-      return send(res, 200, {
-        forms,
-        statuses,
-        atcGroups,
-        manufacturers,
-        authorizationHolders,
-      }, true);
+      return send(res, 200, { forms, statuses, atcGroups, manufacturers, authorizationHolders }, true);
     }
 
     if (mode === 'contraindications') {
       const drugId = textParam(req.query?.drugId);
       const productId = textParam(req.query?.productId);
-      if (!drugId && !productId) {
-        return send(res, 400, { error: 'Missing drugId or productId' });
-      }
+      if (!drugId && !productId) return send(res, 400, { error: 'Missing drugId or productId' });
 
       const [rows] = await asPublicApi(sql, [sql`
         SELECT id, catalog_drug_id, product_id, factor_type, severity,
@@ -143,15 +174,9 @@ export default async function handler(req, res) {
                source_organization, source_url, publication_year
         FROM public.api_published_catalog_contraindications
         WHERE (${drugId} = '' OR catalog_drug_id = ${drugId})
-          AND (
-            ${productId} = ''
-            OR product_id IS NULL
-            OR product_id = ${productId}
-          )
-        ORDER BY
-          CASE severity WHEN 'absolute' THEN 0 WHEN 'relative' THEN 1 ELSE 2 END,
-          factor_type,
-          condition_label
+          AND (${productId} = '' OR product_id IS NULL OR product_id = ${productId})
+        ORDER BY CASE severity WHEN 'absolute' THEN 0 WHEN 'relative' THEN 1 ELSE 2 END,
+                 factor_type, condition_label
       `]);
 
       return send(res, 200, {
@@ -202,10 +227,8 @@ export default async function handler(req, res) {
                  source_organization, source_url, publication_year
           FROM public.api_published_catalog_contraindications
           WHERE catalog_drug_id = ${id}
-          ORDER BY
-            CASE severity WHEN 'absolute' THEN 0 WHEN 'relative' THEN 1 ELSE 2 END,
-            factor_type,
-            condition_label
+          ORDER BY CASE severity WHEN 'absolute' THEN 0 WHEN 'relative' THEN 1 ELSE 2 END,
+                   factor_type, condition_label
         `,
       ]);
       if (!drugRows[0]) return send(res, 404, { error: 'Drug not found' });
@@ -228,103 +251,105 @@ export default async function handler(req, res) {
     const authorizationHolder = textParam(req.query?.authorizationHolder);
     const drugId = textParam(req.query?.drugId);
 
-    if (query.length < 2 && !atc && !form && !productStatus && !manufacturer && !authorizationHolder && !drugId) {
-      return send(res, 200, { query, drugResults: [], productResults: [], results: [], total: 0 }, true);
+    if (query.length < 2 && !atc && !form && !productStatus && !manufacturer && !authorizationHolder && !drugId && !parsedFormula.rules.length) {
+      return send(res, 200, { query, formula: parsedFormula, drugResults: [], productResults: [], results: [], total: 0 }, true);
     }
 
     const normalized = normalizeQuery(query);
     const pattern = `%${query}%`;
-    const normalizedPattern = `%${normalized}%`;
     const atcPattern = `${atc}%`;
     const formPattern = `%${form}%`;
     const manufacturerPattern = `%${manufacturer}%`;
     const holderPattern = `%${authorizationHolder}%`;
+    const { clause: formulaClause } = buildCatalogFormulaClause(sql, parsedFormula, 'p');
+
+    const queryClause = query
+      ? sql`(
+          p.trade_name ILIKE ${pattern}
+          OR p.active_substance ILIKE ${pattern}
+          OR p.generic_name ILIKE ${pattern}
+          OR p.atc_code ILIKE ${pattern}
+          OR p.ma_certificate ILIKE ${pattern}
+          OR p.pdid ILIKE ${pattern}
+          OR p.protocol_no ILIKE ${pattern}
+          OR similarity(lower(p.trade_name), ${normalized}) > 0.22
+          OR similarity(lower(p.active_substance), ${normalized}) > 0.22
+        )`
+      : sql`TRUE`;
+
+    const filterClause = sql`
+      (${queryClause})
+      AND (${atc} = '' OR p.atc_code ILIKE ${atcPattern})
+      AND (${form} = '' OR p.pharmaceutical_form ILIKE ${formPattern})
+      AND (${productStatus} = '' OR p.product_status = ${productStatus})
+      AND (${manufacturer} = '' OR p.manufacturer ILIKE ${manufacturerPattern})
+      AND (${authorizationHolder} = '' OR p.marketing_authorization_holder ILIKE ${holderPattern})
+      AND (${drugId} = '' OR p.drug_id = ${drugId})
+      AND (${formulaClause})
+    `;
 
     const [drugResults, productResults, totalRows] = await asPublicApi(sql, [
       sql`
-        SELECT id, generic_name, normalized_name, atc_code, product_count,
-               pharmaceutical_forms, strengths, valid_from, valid_to,
-               version_label, source_title,
+        SELECT p.drug_id AS id,
+               max(p.generic_name) AS generic_name,
+               lower(max(p.generic_name)) AS normalized_name,
+               max(p.atc_code) AS atc_code,
+               count(*)::int AS product_count,
+               array_remove(array_agg(DISTINCT p.pharmaceutical_form), NULL) AS pharmaceutical_forms,
+               array_remove(array_agg(DISTINCT p.strength_text), NULL) AS strengths,
+               min(p.valid_from) AS valid_from,
+               max(p.valid_to) AS valid_to,
+               max(p.version_label) AS version_label,
+               max(p.source_title) AS source_title,
                GREATEST(
-                 similarity(lower(generic_name), ${normalized}),
-                 similarity(normalized_name, ${normalized}),
-                 similarity(lower(atc_code), ${normalized})
+                 similarity(lower(max(p.generic_name)), ${normalized}),
+                 similarity(lower(max(coalesce(p.atc_code, ''))), ${normalized})
                ) AS relevance
-        FROM public.api_current_drug_catalog
-        WHERE (${query} = '' OR generic_name ILIKE ${pattern}
-           OR normalized_name ILIKE ${normalizedPattern}
-           OR atc_code ILIKE ${pattern}
-           OR search_text ILIKE ${normalizedPattern}
-           OR similarity(lower(generic_name), ${normalized}) > 0.22
-           OR similarity(normalized_name, ${normalized}) > 0.22)
-          AND (${atc} = '' OR atc_code ILIKE ${atcPattern})
-          AND (${drugId} = '' OR id = ${drugId})
+        FROM public.api_current_product_catalog p
+        WHERE ${filterClause}
+          AND p.drug_id IS NOT NULL
+        GROUP BY p.drug_id
         ORDER BY
-          CASE WHEN normalized_name = ${normalized} THEN 0 ELSE 1 END,
-          CASE WHEN lower(atc_code) = ${normalized} THEN 0 ELSE 1 END,
+          CASE WHEN lower(max(p.generic_name)) = ${normalized} THEN 0 ELSE 1 END,
+          CASE WHEN lower(max(coalesce(p.atc_code, ''))) = ${normalized} THEN 0 ELSE 1 END,
           relevance DESC,
           product_count DESC,
           generic_name
         LIMIT ${drugLimit}
       `,
       sql`
-        SELECT id, drug_id, generic_name, trade_name, active_substance, atc_code,
-               strength_text, pharmaceutical_form, package_size,
-               marketing_authorization_holder, manufacturer, ma_certificate,
-               product_status, retail_price, valid_from, valid_to,
-               version_label, source_title,
+        SELECT p.id, p.drug_id, p.generic_name, p.trade_name, p.active_substance, p.atc_code,
+               p.strength_text, p.pharmaceutical_form, p.package_size,
+               p.marketing_authorization_holder, p.manufacturer, p.ma_certificate,
+               p.product_status, p.retail_price, p.valid_from, p.valid_to,
+               p.version_label, p.source_title,
                GREATEST(
-                 similarity(lower(trade_name), ${normalized}),
-                 similarity(lower(active_substance), ${normalized}),
-                 similarity(lower(coalesce(atc_code, '')), ${normalized})
+                 similarity(lower(p.trade_name), ${normalized}),
+                 similarity(lower(p.active_substance), ${normalized}),
+                 similarity(lower(coalesce(p.atc_code, '')), ${normalized})
                ) AS relevance
-        FROM public.api_current_product_catalog
-        WHERE (${query} = '' OR trade_name ILIKE ${pattern}
-           OR active_substance ILIKE ${pattern}
-           OR generic_name ILIKE ${pattern}
-           OR atc_code ILIKE ${pattern}
-           OR ma_certificate ILIKE ${pattern}
-           OR pdid ILIKE ${pattern}
-           OR protocol_no ILIKE ${pattern}
-           OR similarity(lower(trade_name), ${normalized}) > 0.22
-           OR similarity(lower(active_substance), ${normalized}) > 0.22)
-          AND (${atc} = '' OR atc_code ILIKE ${atcPattern})
-          AND (${form} = '' OR pharmaceutical_form ILIKE ${formPattern})
-          AND (${productStatus} = '' OR product_status = ${productStatus})
-          AND (${manufacturer} = '' OR manufacturer ILIKE ${manufacturerPattern})
-          AND (${authorizationHolder} = '' OR marketing_authorization_holder ILIKE ${holderPattern})
-          AND (${drugId} = '' OR drug_id = ${drugId})
+        FROM public.api_current_product_catalog p
+        WHERE ${filterClause}
         ORDER BY
-          CASE WHEN lower(trade_name) = ${normalized} THEN 0 ELSE 1 END,
-          CASE WHEN lower(active_substance) = ${normalized} THEN 0 ELSE 1 END,
+          CASE WHEN lower(p.trade_name) = ${normalized} THEN 0 ELSE 1 END,
+          CASE WHEN lower(p.active_substance) = ${normalized} THEN 0 ELSE 1 END,
           relevance DESC,
-          trade_name,
-          strength_text
+          p.trade_name,
+          p.strength_text
         LIMIT ${productLimit}
         OFFSET ${offset}
       `,
       sql`
         SELECT count(*)::int AS total
-        FROM public.api_current_product_catalog
-        WHERE (${query} = '' OR trade_name ILIKE ${pattern}
-           OR active_substance ILIKE ${pattern}
-           OR generic_name ILIKE ${pattern}
-           OR atc_code ILIKE ${pattern}
-           OR ma_certificate ILIKE ${pattern}
-           OR pdid ILIKE ${pattern}
-           OR protocol_no ILIKE ${pattern})
-          AND (${atc} = '' OR atc_code ILIKE ${atcPattern})
-          AND (${form} = '' OR pharmaceutical_form ILIKE ${formPattern})
-          AND (${productStatus} = '' OR product_status = ${productStatus})
-          AND (${manufacturer} = '' OR manufacturer ILIKE ${manufacturerPattern})
-          AND (${authorizationHolder} = '' OR marketing_authorization_holder ILIKE ${holderPattern})
-          AND (${drugId} = '' OR drug_id = ${drugId})
+        FROM public.api_current_product_catalog p
+        WHERE ${filterClause}
       `,
     ]);
 
     return send(res, 200, {
       query,
       source: 'Kosovo official medicinal products catalogue',
+      formula: parsedFormula,
       filters: { atc, form, status: productStatus, manufacturer, authorizationHolder, drugId },
       drugResults,
       productResults,
