@@ -35,6 +35,15 @@
     loadWorkbenchRuntime();
   }
 
+  function loadATCCatalog() {
+    if (document.querySelector('script[data-dozaks-atc-catalog]')) return;
+    const script = document.createElement('script');
+    script.src = '/atc-catalog.js';
+    script.defer = true;
+    script.dataset.dozaksAtcCatalog = 'true';
+    document.head.appendChild(script);
+  }
+
   function loadProductCatalog() {
     if (document.querySelector('script[data-dozaks-product-catalog]')) {
       loadClinicalSafety();
@@ -72,6 +81,7 @@
   function init() {
     exposeApplicationBridge();
     loadProductCatalog();
+    loadATCCatalog();
     const drugName = document.querySelector('#drugName');
     if (drugName) new MutationObserver(() => refreshActiveDrug(true)).observe(drugName, { childList: true, characterData: true, subtree: true });
 
