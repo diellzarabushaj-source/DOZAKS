@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { createSearchTrace } from './_search-observability.js';
 
 function connectionString() {
   return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL || '';
@@ -32,9 +33,22 @@ async function asPublicApi(sql, queries) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return send(res, 405, { error: 'Method not allowed' });
+  const trace = createSearchTrace(req, res, 'smart-search');
+
+  if (req.method !== 'GET') {
+    trace.finish(405, { outcome: 'method_not_allowed' });
+    return send(res, 405, { error: 'Method not allowed', requestId: trace.requestId });
+  }
+
   const databaseUrl = connectionString();
-  if (!databaseUrl) return send(res, 503, { error: 'DATABASE_URL is not configured', code: 'DATABASE_NOT_CONFIGURED' });
+  if (!databaseUrl) {
+    trace.finish(503, { outcome: 'database_not_configured' });
+    return send(res, 503, {
+      error: 'DATABASE_URL is not configured',
+      code: 'DATABASE_NOT_CONFIGURED',
+      requestId: trace.requestId,
+    });
+  }
 
   const sql = neon(databaseUrl);
   const q = text(req.query?.q);
@@ -54,13 +68,35 @@ export default async function handler(req, res) {
   const productLimit = Math.min(Math.max(Number(req.query?.limit || 12), 1), 60);
   const drugLimit = Math.min(Math.max(Number(req.query?.drugLimit || 6), 1), 20);
 
-  const hasFilter = Boolean(atc || form || strength || status || manufacturer || holder);
+  const activeFilters = [atc, form, strength, status, manufacturer, holder].filter(Boolean);
+  const hasFilter = activeFilters.length > 0;
+  const requestMeta = {
+    queryLength: q.length,
+    filterCount: activeFilters.length,
+    productLimit,
+    drugLimit,
+  };
+
   if (q.length < 2 && !hasFilter) {
-    return send(res, 200, { query: q, parsedQuery: normalized, drugResults: [], productResults: [], total: 0 }, true);
+    trace.finish(200, {
+      ...requestMeta,
+      outcome: 'query_too_short',
+      genericResultCount: 0,
+      productResultCount: 0,
+      total: 0,
+    });
+    return send(res, 200, {
+      requestId: trace.requestId,
+      query: q,
+      parsedQuery: normalized,
+      drugResults: [],
+      productResults: [],
+      total: 0,
+    }, true);
   }
 
   try {
-    const [drugResults, productResults, totalRows] = await asPublicApi(sql, [
+    const [drugResults, productResults, totalRows] = await trace.measureDatabase(() => asPublicApi(sql, [
       sql`
         SELECT p.drug_id AS id,
                max(p.generic_name) AS generic_name,
@@ -187,19 +223,36 @@ export default async function handler(req, res) {
           AND (${manufacturer} = '' OR p.manufacturer ILIKE ${manufacturerPattern})
           AND (${holder} = '' OR p.marketing_authorization_holder ILIKE ${holderPattern})
       `,
-    ]);
+    ]));
+
+    const total = totalRows[0]?.total || 0;
+    trace.finish(200, {
+      ...requestMeta,
+      outcome: 'ok',
+      genericResultCount: drugResults.length,
+      productResultCount: productResults.length,
+      total,
+    });
 
     return send(res, 200, {
+      requestId: trace.requestId,
       query: q,
       parsedQuery: normalized,
       source: 'Kosovo official medicinal products catalogue',
       filters: { atc, form, strength, status, manufacturer, authorizationHolder: holder },
       drugResults,
       productResults,
-      total: totalRows[0]?.total || 0,
+      total,
     }, true);
   } catch (error) {
-    console.error('Vercel smart-search error', error);
-    return send(res, 500, { error: 'Smart search request failed', code: 'SMART_SEARCH_FAILED' });
+    await trace.fail(error, 500, {
+      ...requestMeta,
+      outcome: 'database_or_runtime_error',
+    });
+    return send(res, 500, {
+      requestId: trace.requestId,
+      error: 'Smart search request failed',
+      code: 'SMART_SEARCH_FAILED',
+    });
   }
 }
