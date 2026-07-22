@@ -16,12 +16,6 @@
     { "src": "contraindications-ui.js", "use": "@vercel/static" },
     { "src": "sw.js", "use": "@vercel/static" }
   ],
-  "rewrites": [
-    {
-      "source": "/api/clinical-data",
-      "destination": "https://mjeku-ks.netlify.app/api/clinical-data"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
