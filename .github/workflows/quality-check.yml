@@ -31,10 +31,14 @@ jobs:
         run: |
           test -f index.html
           test -f product-catalog.js
+          test -f atc-catalog.js
           test -f contraindications-ui.js
           test -f clinical-workbench.js
           test -f clinical-workbench-runtime.js
+          test -f formula-engine.js
           test -f api/product-catalog.js
+          test -f api/atc-catalog.js
           test -f api/protocol-safety.js
           grep -q 'clinical-workbench.js' index.html
-          grep -q 'clinical-workbench-runtime.js' sw.js
+          grep -q 'atc-catalog.js' drug-card-sync.js
+          grep -q 'atc-catalog.js' sw.js
