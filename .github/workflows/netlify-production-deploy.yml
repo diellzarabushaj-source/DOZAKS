@@ -1,0 +1,43 @@
+name: Deploy current main to Netlify
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: startsWith(github.event.pull_request.title, 'Deploy current main to Netlify')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Read temporary deploy credential
+        id: credential
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          proxy="$(printf '%s\n' "$PR_BODY" | sed -n 's/^NETLIFY_PROXY_PATH=//p' | head -n 1)"
+          test -n "$proxy"
+          echo "::add-mask::$proxy"
+          printf 'proxy=%s\n' "$proxy" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy production source
+        env:
+          NETLIFY_PROXY_PATH: ${{ steps.credential.outputs.proxy }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @netlify/mcp@latest \
+            --site-id 8b459b64-b5ff-4352-8a4c-d7203e292149 \
+            --proxy-path "$NETLIFY_PROXY_PATH" \
+            --no-wait
