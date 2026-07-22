@@ -1,5 +1,6 @@
-const CACHE_NAME = 'dozaks-shell-v14-mega-search';
-const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/db-client.js', '/drug-card-sync.js', '/ux.js'];
+const CACHE_NAME = 'dozaks-shell-v15-local-search';
+const INDEX_CACHE = 'dozaks-search-index-v1';
+const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/db-client.js', '/drug-card-sync.js', '/ux.js', '/smart-search-ui.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -12,7 +13,9 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys
+        .filter((key) => ![CACHE_NAME, INDEX_CACHE].includes(key))
+        .map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -22,7 +25,36 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  if (url.origin !== self.location.origin) return;
+
+  if (url.pathname === '/api/search-index') {
+    event.respondWith((async () => {
+      const cache = await caches.open(INDEX_CACHE);
+      const cached = await cache.match(request);
+      const refresh = fetch(request)
+        .then((response) => {
+          if (response.ok) cache.put(request, response.clone());
+          return response;
+        })
+        .catch(() => null);
+
+      if (cached) {
+        event.waitUntil(refresh);
+        return cached;
+      }
+
+      return (await refresh) || new Response(JSON.stringify({
+        error: 'Search index unavailable offline',
+        code: 'SEARCH_INDEX_OFFLINE',
+      }), {
+        status: 503,
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+      });
+    })());
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(
