@@ -10,7 +10,7 @@ function rounded(value) {
 function safeError(error) {
   return {
     name: String(error?.name || 'Error').slice(0, 80),
-    message: String(error?.message || error || 'Unknown error').slice(0, 240),
+    code: String(error?.code || 'SEARCH_RUNTIME_ERROR').slice(0, 80),
   };
 }
 
@@ -26,13 +26,28 @@ async function getSentry() {
           release: process.env.VERCEL_GIT_COMMIT_SHA || undefined,
           tracesSampleRate: 0,
           sendDefaultPii: false,
+          beforeBreadcrumb: () => null,
+          beforeSend(event) {
+            delete event.request;
+            delete event.user;
+            if (event.exception?.values) {
+              event.exception.values = event.exception.values.map((value) => ({
+                ...value,
+                value: 'DozaKS smart search failed',
+              }));
+            }
+            if (event.message) event.message = 'DozaKS smart search failed';
+            return event;
+          },
         });
         return Sentry;
       })
       .catch((error) => {
+        const details = safeError(error);
         console.warn(JSON.stringify({
           event: 'dozaks.sentry.init_failed',
-          ...safeError(error),
+          errorName: details.name,
+          errorCode: details.code,
         }));
         return null;
       });
@@ -102,7 +117,7 @@ export function createSearchTrace(req, res, operation = 'smart-search') {
       ...eventPayload(statusCode, meta),
       ...measured,
       errorName: details.name,
-      errorMessage: details.message,
+      errorCode: details.code,
     };
     console.error(JSON.stringify(payload));
 
@@ -111,6 +126,7 @@ export function createSearchTrace(req, res, operation = 'smart-search') {
       Sentry.withScope((scope) => {
         scope.setTag('dozaks.operation', operation);
         scope.setTag('dozaks.request_id', requestId);
+        scope.setTag('dozaks.error_code', details.code);
         scope.setLevel('error');
         scope.setContext('search_performance', {
           statusCode,
@@ -118,7 +134,9 @@ export function createSearchTrace(req, res, operation = 'smart-search') {
           databaseMs: measured.databaseMs,
           ...meta,
         });
-        Sentry.captureException(error);
+        const reportError = new Error('DozaKS smart search failed');
+        reportError.name = details.name;
+        Sentry.captureException(reportError);
       });
       await Sentry.flush(500);
     }
