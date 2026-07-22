@@ -73,9 +73,9 @@
     exposeBridge();
     injectTypography();
 
-    loadScriptOnce('/product-catalog.js?v=mega-search-20260722', 'dozaks-product-catalog');
-    loadScriptOnce('/smart-search-ui.js?v=mega-search-20260722', 'dozaks-smart-search');
-    loadScriptOnce('/search-audit-client.js?v=phase1-20260722', 'dozaks-search-audit');
+    loadScriptOnce('/smart-search-ui.js?v=local-index-20260722', 'dozaks-smart-search');
+    loadScriptOnce('/product-catalog.js?v=local-index-20260722', 'dozaks-product-catalog');
+    loadScriptOnce('/search-audit-client.js?v=phase2-20260722', 'dozaks-search-audit');
     loadScriptOnce('/database-health.js?v=mega-search-20260722', 'dozaks-database-health');
     loadScriptOnce('/contraindications-ui.js?v=mega-search-20260722', 'dozaks-clinical-safety');
     loadScriptOnce('/clinical-workbench-runtime.js?v=mega-search-20260722', 'dozaks-workbench-runtime');
