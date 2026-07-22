@@ -1,22 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "builds": [
-    { "src": "api/*.js", "use": "@vercel/node" },
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "app.css", "use": "@vercel/static" },
-    { "src": "app.js", "use": "@vercel/static" },
-    { "src": "db-client.js", "use": "@vercel/static" },
-    { "src": "ux.js", "use": "@vercel/static" },
-    { "src": "drug-card-sync.js", "use": "@vercel/static" },
-    { "src": "product-catalog.js", "use": "@vercel/static" },
-    { "src": "atc-catalog.js", "use": "@vercel/static" },
-    { "src": "clinical-workbench.js", "use": "@vercel/static" },
-    { "src": "clinical-workbench-runtime.js", "use": "@vercel/static" },
-    { "src": "formula-engine.js", "use": "@vercel/static" },
-    { "src": "contraindications-ui.js", "use": "@vercel/static" },
-    { "src": "sw.js", "use": "@vercel/static" }
-  ],
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 15
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
