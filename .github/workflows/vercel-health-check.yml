@@ -1,0 +1,74 @@
+name: Verify Vercel production
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel deployment
+        shell: bash
+        run: sleep 35
+
+      - name: Verify Vercel to Neon connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://dozaks-diellzarabushaj-2665s-projects.vercel.app'
+
+          request_with_retry() {
+            local url="$1"
+            local output="$2"
+            for attempt in 1 2 3 4 5 6; do
+              status="$(curl --silent --show-error --location --max-time 25 --output "$output" --write-out '%{http_code}' "$url" || true)"
+              if [ "$status" = '200' ]; then
+                return 0
+              fi
+              echo "Attempt $attempt returned HTTP $status"
+              cat "$output" 2>/dev/null || true
+              sleep 15
+            done
+            return 1
+          }
+
+          request_with_retry "$base/api/product-catalog?mode=health" catalog-health.json
+          request_with_retry "$base/api/clinical-data?mode=health" clinical-health.json
+          request_with_retry "$base/api/product-catalog?q=MERO&limit=5" search.json
+
+          python - <<'PY'
+          import json
+
+          with open('catalog-health.json', encoding='utf-8') as fh:
+              catalog = json.load(fh)
+          with open('clinical-health.json', encoding='utf-8') as fh:
+              clinical = json.load(fh)
+          with open('search.json', encoding='utf-8') as fh:
+              search = json.load(fh)
+
+          assert catalog.get('ok') is True, catalog
+          assert catalog.get('database') == 'neon', catalog
+          assert catalog.get('hosting') == 'vercel', catalog
+          assert int(catalog.get('visible_products') or 0) >= 4000, catalog
+
+          assert clinical.get('ok') is True, clinical
+          assert clinical.get('database') == 'neon', clinical
+          assert clinical.get('hosting') == 'vercel', clinical
+
+          products = search.get('productResults') or search.get('results') or []
+          drugs = search.get('drugResults') or []
+          assert products or drugs, search
+
+          print(json.dumps({
+              'catalogProducts': catalog.get('visible_products'),
+              'catalogDrugs': catalog.get('visible_drugs'),
+              'searchProducts': len(products),
+              'searchDrugs': len(drugs),
+              'firstProduct': products[0].get('trade_name') if products else None,
+          }, ensure_ascii=False))
+          PY
