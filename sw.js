@@ -1,8 +1,12 @@
-const CACHE_NAME = 'dozaks-shell-v11';
+const CACHE_NAME = 'dozaks-shell-v13';
 const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/db-client.js', '/drug-card-sync.js', '/ux.js', '/product-catalog.js', '/atc-catalog.js', '/contraindications-ui.js', '/clinical-workbench.js', '/clinical-workbench-runtime.js', '/formula-engine.js'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(SHELL))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -24,8 +28,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
+          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', response.clone()));
           return response;
         })
         .catch(() => caches.match('/index.html'))
@@ -35,16 +38,12 @@ self.addEventListener('fetch', (event) => {
 
   if (SHELL.includes(url.pathname)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const network = fetch(request)
-          .then((response) => {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-            return response;
-          })
-          .catch(() => cached);
-        return cached || network;
-      })
+      fetch(request)
+        .then((response) => {
+          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
   }
 });
