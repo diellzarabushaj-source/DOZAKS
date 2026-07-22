@@ -1,0 +1,37 @@
+name: Diagnose Vercel Neon API
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test production endpoints
+        shell: bash
+        run: |
+          set -u
+          urls=(
+            "https://dozaks.vercel.app/api/product-catalog?mode=health"
+            "https://dozaks.vercel.app/api/product-catalog?q=AMOX&limit=5"
+            "https://dozaks.vercel.app/api/atc-catalog?mode=meta"
+          )
+
+          failed=0
+          for url in "${urls[@]}"; do
+            echo "::group::$url"
+            status=$(curl -sS -L --max-time 30 -o response.txt -w '%{http_code}' "$url" || true)
+            echo "HTTP_STATUS=$status"
+            echo "CONTENT_TYPE=$(curl -sSI -L --max-time 30 "$url" | tr -d '\r' | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tail -1)"
+            echo "BODY_START"
+            sed -n '1,120p' response.txt
+            echo
+            echo "BODY_END"
+            if [[ "$status" != "200" ]]; then failed=1; fi
+            echo "::endgroup::"
+          done
+          exit "$failed"
