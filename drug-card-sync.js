@@ -1,104 +1,66 @@
 'use strict';
 
 (() => {
-  let lastSlug = '';
-  let lastLoadedAt = 0;
+  const API = '/api/product-catalog';
+  let lastSlug = '', lastLoadedAt = 0, lastEnhanced = '', timer, summaryBackup;
+  const esc = (v='') => String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const norm = (v='') => String(v).toLocaleLowerCase('sq').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
 
-  function exposeApplicationBridge() {
-    try {
-      if (typeof openModal === 'function') window.openModal = openModal;
-      if (typeof closeModal === 'function') window.closeModal = closeModal;
-      if (typeof showToast === 'function') window.showToast = showToast;
-      if (typeof renderRecent === 'function') window.renderRecent = renderRecent;
-    } catch (error) {
-      console.warn('DozaKS application bridge failed', error);
-    }
+  function bridge(){try{if(typeof openModal==='function')window.openModal=openModal;if(typeof closeModal==='function')window.closeModal=closeModal;if(typeof showToast==='function')window.showToast=showToast;if(typeof renderRecent==='function')window.renderRecent=renderRecent}catch(e){console.warn('DozaKS bridge failed',e)}}
+
+  function styles(){
+    document.querySelector('#dozaks-ui-v2')?.remove();
+    const s=document.createElement('style');s.id='dozaks-ui-v2';s.textContent=`
+      body{font-family:"Segoe UI Variable Text","Segoe UI",Inter,system-ui,sans-serif!important;font-size:15px;color:#132238;letter-spacing:-.006em}
+      .heading h1{font-size:19px!important}.heading p{font-size:12px!important}.nav-item{min-height:46px!important}.nav-item span:nth-child(2){font-size:13.5px!important;font-weight:650!important}.nav-item.active{background:linear-gradient(90deg,#155caa,#10467f)!important;box-shadow:inset 4px 0 0 #7fd5ff!important}
+      .hero h2{font-size:clamp(34px,3vw,46px)!important}.hero-copy p{font-size:14.5px!important}.search-box input{height:60px!important;font-size:16.5px!important;font-weight:650!important}.advanced{min-height:60px!important;font-size:13px!important}.filters button{font-size:12px!important;padding:7px 13px!important}.filters button.active{background:#fff!important;color:#0a4f9d!important;box-shadow:0 0 0 3px rgba(104,190,255,.16)!important}
+      .suggestions button{min-height:72px!important;padding:12px 15px!important}.suggestions strong{font-size:14px!important}.suggestions small{font-size:11.5px!important}.suggestions button:hover,.suggestions button.highlight,.suggestions button[aria-selected=true]{background:#eaf3ff!important;box-shadow:inset 5px 0 0 #0b63ce!important}.selected-indicator{padding:5px 8px;border-radius:999px;background:#0b63ce;color:#fff;font-size:9px;font-weight:900}
+      .section-heading h2{font-size:21px!important}.category strong{font-size:13px!important}.category small{font-size:10.5px!important}.panel-heading h3,.panel>h3{font-size:14px!important}.list span,.rank span,.emergency-list span{font-size:12px!important}
+      .drug-panel{padding:24px!important}.drug-head h3{font-size:32px!important}.drug-head p{font-size:13.5px!important}.clinical-summary-strip span{font-size:9px!important}.clinical-summary-strip strong{font-size:12.5px!important}.drug-panel h4{font-size:12px!important}.chips button{font-size:11px!important;min-height:36px!important}.chips button:disabled{opacity:1!important;cursor:default!important}.notice{font-size:12px!important;line-height:1.65!important}td{font-size:11.5px!important;line-height:1.55!important}
+      .selection-confirmation{display:flex;align-items:center;gap:12px;margin:17px 0 14px;padding:12px 14px;border:1px solid #9dc9f7;border-radius:12px;background:#edf6ff;color:#153b66}.selection-confirmation[hidden]{display:none!important}.selection-check{display:grid;width:36px;height:36px;place-items:center;flex:0 0 auto;border-radius:50%;background:#0b63ce;color:#fff;font-size:18px;font-weight:950}.selection-confirmation strong{display:block;font-size:13px}.selection-confirmation small{display:block;margin-top:3px;color:#526a83;font-size:11px}
+      .medicine-tags{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 10px}.medicine-tags[hidden],.catalog-insights[hidden]{display:none!important}.medicine-tag{display:inline-flex;align-items:center;padding:6px 10px;border:1px solid #c7d7e9;border-radius:999px;background:#f8fafc;color:#324b67;font-size:10px;font-weight:850}.medicine-tag.route{border-color:#9fc7f4;background:#eaf3ff;color:#0753a7}.medicine-tag.inj{border-color:#f2c38a;background:#fff7e8;color:#92510a}.medicine-tag.oral{border-color:#b7dfcc;background:#effbf5;color:#08714f}.medicine-tag.topical{border-color:#d8c9f4;background:#f7f3ff;color:#6b43ad}
+      .catalog-insights{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:13px 0 15px}.catalog-insight{padding:11px 12px;border:1px solid #dbe4ef;border-radius:11px;background:#fbfcfe}.catalog-insight span{display:block;color:#6b7a90;font-size:9px;font-weight:800;text-transform:uppercase}.catalog-insight strong{display:block;margin-top:5px;color:#1e3550;font-size:11.5px;line-height:1.45}.wide{grid-column:span 2}.product-form-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}.product-form-tags .medicine-tag{padding:3px 7px;font-size:8px}.catalog-product-substance{display:block;margin-top:3px;color:#6a788c;font-size:9.5px}
+      @media(max-width:900px){.catalog-insights{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.catalog-insights{grid-template-columns:1fr}.wide{grid-column:auto}.drug-panel{padding:18px 15px!important}.drug-head h3{font-size:27px!important}.hero h2{font-size:31px!important}}
+    `;document.head.appendChild(s);
   }
 
-  function loadWorkbenchRuntime() {
-    if (document.querySelector('script[data-dozaks-workbench-runtime]')) return;
-    const script = document.createElement('script');
-    script.src = '/clinical-workbench-runtime.js';
-    script.defer = true;
-    script.dataset.dozaksWorkbenchRuntime = 'true';
-    document.head.appendChild(script);
-  }
+  function load(src,key,onload){if(document.querySelector(`script[data-${key}]`)){onload?.();return}const s=document.createElement('script');s.src=src;s.defer=true;s.dataset[key.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]='true';if(onload)s.addEventListener('load',onload,{once:true});document.head.appendChild(s)}
+  function workbench(){load('/clinical-workbench-runtime.js','dozaks-workbench-runtime')}
+  function safety(){load('/contraindications-ui.js','dozaks-clinical-safety');styles();enhanceSetup();workbench()}
+  function productCatalog(){load('/product-catalog.js','dozaks-product-catalog',safety)}
+  function atc(){load('/atc-catalog.js','dozaks-atc-catalog')}
 
-  function loadClinicalSafety() {
-    if (!document.querySelector('script[data-dozaks-clinical-safety]')) {
-      const script = document.createElement('script');
-      script.src = '/contraindications-ui.js';
-      script.defer = true;
-      script.dataset.dozaksClinicalSafety = 'true';
-      document.head.appendChild(script);
-    }
-    loadWorkbenchRuntime();
-  }
+  function activeSlug(){if(typeof state==='undefined'||typeof catalog==='undefined')return'';const x=catalog.find(e=>e.id===state.selectedId);return x?.slug||x?.id||''}
+  function refresh(force=false){if(window.DozaKSProductMode)return;const slug=activeSlug();if(!slug||!window.DozaKSDatabase?.renderDrugCard)return;if(!force&&slug===lastSlug&&Date.now()-lastLoadedAt<30000)return;lastSlug=slug;lastLoadedAt=Date.now();window.DozaKSDatabase.renderDrugCard(slug)}
 
-  function loadATCCatalog() {
-    if (document.querySelector('script[data-dozaks-atc-catalog]')) return;
-    const script = document.createElement('script');
-    script.src = '/atc-catalog.js';
-    script.defer = true;
-    script.dataset.dozaksAtcCatalog = 'true';
-    document.head.appendChild(script);
-  }
+  async function json(url){const c=new AbortController(),t=setTimeout(()=>c.abort(),7000);try{const r=await fetch(url,{headers:{accept:'application/json'},credentials:'same-origin',signal:c.signal});if(!r.ok)throw Error(`API ${r.status}`);return await r.json()}finally{clearTimeout(t)}}
+  const price=v=>Number.isFinite(Number(v))?new Intl.NumberFormat('sq-AL',{style:'currency',currency:'EUR'}).format(Number(v)):'—';
+  const date=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):new Intl.DateTimeFormat('sq-AL',{day:'2-digit',month:'2-digit',year:'numeric'}).format(d)};
 
-  function loadProductCatalog() {
-    if (document.querySelector('script[data-dozaks-product-catalog]')) {
-      loadClinicalSafety();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = '/product-catalog.js';
-    script.defer = true;
-    script.dataset.dozaksProductCatalog = 'true';
-    script.addEventListener('load', loadClinicalSafety, { once: true });
-    document.head.appendChild(script);
-  }
+  function tags(raw){const out=[];const add=(label,tone='')=>{if(!out.some(x=>x.label===label))out.push({label,tone})};(raw||[]).forEach(x=>{const v=norm(x);if(!v)return;if(v.includes('intraven')||/\biv\b/.test(v))add('IV','route');if(v.includes('intramus')||/\bim\b/.test(v))add('IM','route');if(v.includes('infusion')){add('INFUZION','route');add('IV','route')}if(v.includes('inject')||v.includes('vial')||v.includes('ampoul'))add('INJEKSION','inj');if(v.includes('tablet'))add('TABLETË','oral');if(v.includes('capsul'))add('KAPSULË','oral');if(v.includes('syrup'))add('SHURUP','oral');if(v.includes('suspension'))add('SUSPENSION','oral');if(v.includes('oral solution')||v.includes('powder for oral'))add('ORAL','oral');if(v.includes('cream'))add('KREM','topical');if(v.includes('ointment'))add('UNGVENT','topical');if(v.includes('gel'))add('GEL','topical');if(v.includes('inhal')||v.includes('nebul'))add('INHALIM','route');if(v.includes('nasal'))add('NAZAL','route');if(v.includes('eye')||v.includes('ophthalm'))add('PIKA PËR SY','topical');if(v.includes('ear')||v.includes('otic'))add('PIKA PËR VESH','topical');if(v.includes('suppositor'))add('SUPOZITOR','oral')});return out.slice(0,14)}
+  const tagHTML=list=>list.map(x=>`<span class="medicine-tag ${esc(x.tone)}">${esc(x.label)}</span>`).join('');
 
-  function activeSlug() {
-    if (typeof state === 'undefined' || typeof catalog === 'undefined') return '';
-    const item = catalog.find((entry) => entry.id === state.selectedId);
-    return item?.slug || item?.id || '';
-  }
+  function slots(){const p=document.querySelector('#drugPanel');if(!p)return null;let c=document.querySelector('#selectionConfirmation');if(!c){c=document.createElement('div');c.id='selectionConfirmation';c.className='selection-confirmation';c.hidden=true;p.querySelector('.drug-head')?.insertAdjacentElement('afterend',c)}let i=document.querySelector('#catalogInsights');if(!i){i=document.createElement('div');i.id='catalogInsights';i.className='catalog-insights';i.hidden=true;p.querySelector('.clinical-summary-strip')?.insertAdjacentElement('afterend',i)}let g=document.querySelector('#medicineTags');if(!g){g=document.createElement('div');g.id='medicineTags';g.className='medicine-tags';g.hidden=true;p.querySelector('#formChips')?.insertAdjacentElement('beforebegin',g)}return{c,i,g}}
+  function backup(){if(summaryBackup)return;summaryBackup=[...document.querySelectorAll('.clinical-summary-strip>div')].map(x=>({l:x.querySelector('span')?.textContent||'',v:x.querySelector('strong')?.textContent||''}))}
+  function cell(n,l,v){const x=document.querySelectorAll('.clinical-summary-strip>div')[n];if(!x)return;if(x.querySelector('span'))x.querySelector('span').textContent=l;if(x.querySelector('strong'))x.querySelector('strong').textContent=v||'—'}
+  function selection(kind,name,sub){const x=slots();if(!x)return;x.c.hidden=false;x.c.innerHTML=`<span class="selection-check">✓</span><span><strong>${esc(kind)}: ${esc(name)}</strong><small>${esc(sub)}</small></span>`}
+  function renderTags(list){const x=slots();if(!x)return;x.g.hidden=!list.length;x.g.innerHTML=tagHTML(list)}
+  function insights(list){const x=slots();if(!x)return;const a=list.filter(y=>y.value&&y.value!=='—');x.i.hidden=!a.length;x.i.innerHTML=a.map(y=>`<div class="catalog-insight ${y.wide?'wide':''}"><span>${esc(y.label)}</span><strong>${esc(y.value)}</strong></div>`).join('')}
+  function headings(a){[...document.querySelectorAll('#drugPanel thead th')].forEach((x,n)=>{if(a[n])x.textContent=a[n]})}
+  function inline(form){const x=tags([form]);return x.length?`<div class="product-form-tags">${tagHTML(x.slice(0,3))}</div>`:''}
 
-  function refreshActiveDrug(force = false) {
-    if (window.DozaKSProductMode) return;
-    const slug = activeSlug();
-    if (!slug || !window.DozaKSDatabase?.renderDrugCard) return;
-    if (!force && slug === lastSlug && Date.now() - lastLoadedAt < 30000) return;
-    lastSlug = slug;
-    lastLoadedAt = Date.now();
-    window.DozaKSDatabase.renderDrugCard(slug);
-  }
+  function mark(id){document.querySelectorAll('[data-kosovo-drug],[data-kosovo-product]').forEach(b=>{const k=b.dataset.kosovoDrug?`drug:${b.dataset.kosovoDrug}`:`product:${b.dataset.kosovoProduct}`,on=k===id;b.setAttribute('aria-selected',on?'true':'false');b.querySelector('.selected-indicator')?.remove();if(on){const s=document.createElement('span');s.className='selected-indicator';s.textContent='✓ E zgjedhur';b.querySelector('.catalog-suggestion-side')?.appendChild(s)}})}
 
-  function leaveProductModeForClinicalNavigation() {
-    window.DozaKSProductCatalog?.leaveProductMode?.();
-    window.DozaKSProductMode = false;
-  }
+  function product(row,key){backup();const form=row.pharmaceutical_form||'';cell(0,'Statusi',row.product_status||'Produkt i listuar');cell(1,'Forma',form||'—');cell(2,'Kodi ATC',row.atc_code||'—');selection('Produkti i zgjedhur',row.trade_name||'Produkt medicinal',[row.active_substance||row.generic_name,row.strength_text,form].filter(Boolean).join(' · '));renderTags(tags([form,row.route]));insights([{label:'Substanca aktive',value:row.active_substance||row.generic_name,wide:true},{label:'Fortësia',value:row.strength_text},{label:'Forma',value:form,wide:true},{label:'Paketimi',value:row.package_size,wide:true},{label:'Prodhuesi',value:row.manufacturer,wide:true},{label:'Bartësi i autorizimit',value:row.marketing_authorization_holder,wide:true},{label:'Certifikata MA',value:row.ma_certificate},{label:'Çmimi',value:price(row.retail_price)},{label:'Vlefshmëria',value:`${date(row.valid_from)} – ${date(row.valid_to)}`},{label:'Burimi',value:row.source_title||`Lista zyrtare V${row.version_label||'1.1'}`,wide:true}]);const chips=[row.strength_text,form,row.package_size].filter(Boolean);document.querySelector('#formChips').innerHTML=chips.map((v,n)=>`<button class="${n?'':'active'}" disabled>${esc(v)}</button>`).join('');headings(['Fusha','Vlera','Detaj','Statusi']);document.querySelector('#doseRows').innerHTML=`<tr><td>Identiteti</td><td><strong>${esc(row.trade_name||'—')}</strong></td><td>${esc(row.generic_name||row.active_substance||'—')}</td><td><span class="catalog-status-pill">I zgjedhur</span></td></tr><tr><td>Substanca aktive</td><td>${esc(row.active_substance||'—')}</td><td>${esc(row.atc_code||'—')}</td><td><span class="catalog-status-pill">Burim zyrtar</span></td></tr><tr><td>Forma / rruga</td><td>${inline(form)}${esc([row.strength_text,form].filter(Boolean).join(' · ')||'—')}</td><td>${esc(row.package_size||'—')}</td><td><span class="catalog-status-pill">E indeksuar</span></td></tr><tr><td>Prodhuesi</td><td>${esc(row.manufacturer||'—')}</td><td>${esc(row.marketing_authorization_holder||'—')}</td><td><span class="catalog-status-pill">E regjistruar</span></td></tr><tr><td>Autorizimi</td><td>${esc(row.ma_certificate||'—')}</td><td>${esc([row.protocol_no,row.pdid].filter(Boolean).join(' · ')||'—')}</td><td><span class="catalog-status-pill">I indeksuar</span></td></tr><tr><td>Statusi / çmimi</td><td>${esc(row.product_status||'I listuar')}</td><td>${esc(price(row.retail_price))}</td><td><span class="catalog-status-pill">Aktual</span></td></tr>`;mark(key)}
 
-  function init() {
-    exposeApplicationBridge();
-    loadProductCatalog();
-    loadATCCatalog();
-    const drugName = document.querySelector('#drugName');
-    if (drugName) new MutationObserver(() => refreshActiveDrug(true)).observe(drugName, { childList: true, characterData: true, subtree: true });
+  function drug(d,rows,key){backup();const forms=[...new Set(rows.map(x=>x.pharmaceutical_form).filter(Boolean))],strengths=[...new Set(rows.map(x=>x.strength_text).filter(Boolean))],makers=[...new Set(rows.map(x=>x.manufacturer).filter(Boolean))],prices=rows.map(x=>Number(x.retail_price)).filter(Number.isFinite);cell(0,'Statusi','Bar i lidhur me Neon');cell(1,'Produkte',String(rows.length||d.product_count||0));cell(2,'Kodi ATC',d.atc_code||'—');selection('Bari i zgjedhur',d.generic_name||'Bar gjenerik',`${rows.length||d.product_count||0} produkte · ${forms.length} forma · ${strengths.length} fortësi`);renderTags(tags(forms));insights([{label:'Emri gjenerik',value:d.generic_name,wide:true},{label:'Kodi ATC',value:d.atc_code},{label:'Produkte',value:String(rows.length||d.product_count||0)},{label:'Format',value:forms.slice(0,5).join(', '),wide:true},{label:'Fortësitë',value:strengths.slice(0,5).join(', '),wide:true},{label:'Prodhues',value:String(makers.length)},{label:'Intervali i çmimit',value:prices.length?`${price(Math.min(...prices))} – ${price(Math.max(...prices))}`:'—'},{label:'Burimi',value:d.source_title||`Lista zyrtare V${d.version_label||'1.1'}`,wide:true}]);document.querySelector('#formChips').innerHTML=[...forms.slice(0,6),...strengths.slice(0,4)].map((v,n)=>`<button class="${n?'':'active'}" disabled>${esc(v)}</button>`).join('');headings(['Produkti tregtar','Forma / fortësia','Paketimi / prodhuesi','Statusi']);document.querySelector('#doseRows').innerHTML=rows.slice(0,80).map(r=>`<tr><td><button class="catalog-product-link" data-kosovo-product="${esc(r.id)}"><strong>${esc(r.trade_name||'Pa emër tregtar')}</strong><span class="catalog-product-substance">${esc(r.active_substance||r.generic_name||'')}</span></button></td><td>${inline(r.pharmaceutical_form)}<strong>${esc(r.strength_text||'—')}</strong><br>${esc(r.pharmaceutical_form||'—')}</td><td>${esc(r.package_size||'—')}<span class="catalog-product-substance">${esc(r.manufacturer||r.marketing_authorization_holder||'—')}</span></td><td><span class="catalog-status-pill">${esc(r.product_status||'I listuar')}</span></td></tr>`).join('')||'<tr><td colspan="4">Nuk u gjet produkt aktiv.</td></tr>';mark(key)}
 
-    document.addEventListener('click', (event) => {
-      if (event.target.closest('[data-open-item]:not([data-open-item^="product:"]), [data-result-id], #popularList button, #recentList button:not([data-open-item^="product:"])')) {
-        leaveProductModeForClinicalNavigation();
-        setTimeout(() => refreshActiveDrug(true), 40);
-      }
-    });
+  function latest(){try{const x=JSON.parse(localStorage.getItem('dozaks-history')||'[]')[0],r=String(x?.id||'');if(r.startsWith('product:'))return{type:'product',id:r.slice(8),key:r};if(r.startsWith('drug:'))return{type:'drug',id:r.slice(5),key:r}}catch{}return null}
+  function reset(){lastEnhanced='';if(summaryBackup){summaryBackup.forEach((x,n)=>cell(n,x.l,x.v));summaryBackup=null}cell(0,'Statusi editorial','Në verifikim');const x=slots();if(x){x.c.hidden=x.i.hidden=x.g.hidden=true;x.c.innerHTML=x.i.innerHTML=x.g.innerHTML=''}mark('')}
+  async function enhance(force=false){if(!window.DozaKSCatalogMode&&!window.DozaKSProductMode){reset();return}const x=latest();if(!x)return;if(!force&&x.key===lastEnhanced){mark(x.key);return}lastEnhanced=x.key;try{if(x.type==='product')product(await json(`${API}?mode=detail&id=${encodeURIComponent(x.id)}`),x.key);else{const d=await json(`${API}?mode=drug-detail&id=${encodeURIComponent(x.id)}`);drug(d.drug,Array.isArray(d.products)?d.products:[],x.key)}}catch(e){console.warn('DozaKS enhancement failed',e);lastEnhanced=''}}
+  function schedule(force=false){clearTimeout(timer);timer=setTimeout(()=>enhance(force),160)}
+  function enhanceSetup(){if(window.__dozaksEnhanceV2)return;window.__dozaksEnhanceV2=true;slots();const watch=x=>x&&new MutationObserver(()=>schedule(true)).observe(x,{childList:true,subtree:true,characterData:true});watch(document.querySelector('#drugName'));watch(document.querySelector('#itemType'));const sug=document.querySelector('#suggestions');sug&&new MutationObserver(()=>{const x=latest();if(x)mark(x.key)}).observe(sug,{childList:true,subtree:true});document.addEventListener('click',e=>{if(e.target.closest('[data-kosovo-drug],[data-kosovo-product]'))schedule(true);if(e.target.closest('[data-result-id],[data-open-item]:not([data-open-item^="product:"]):not([data-open-item^="drug:"]),#popularList button'))setTimeout(()=>{if(!window.DozaKSCatalogMode)reset()},80)});schedule(true)}
 
-    document.querySelector('#searchForm')?.addEventListener('submit', () => {
-      if (!window.DozaKSProductMode) setTimeout(() => refreshActiveDrug(true), 40);
-    });
-    window.addEventListener('dozaks:database-ready', () => refreshActiveDrug(true));
-    setTimeout(() => refreshActiveDrug(true), 80);
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
-  else init();
+  function init(){bridge();styles();enhanceSetup();productCatalog();atc();const dn=document.querySelector('#drugName');dn&&new MutationObserver(()=>refresh(true)).observe(dn,{childList:true,characterData:true,subtree:true});document.addEventListener('click',e=>{if(e.target.closest('[data-open-item]:not([data-open-item^="product:"]):not([data-open-item^="drug:"]),[data-result-id],#popularList button,#recentList button:not([data-open-item^="product:"]):not([data-open-item^="drug:"])')){window.DozaKSProductCatalog?.leaveProductMode?.();window.DozaKSProductMode=false;reset();setTimeout(()=>refresh(true),40)}});document.querySelector('#searchForm')?.addEventListener('submit',()=>{if(!window.DozaKSProductMode)setTimeout(()=>refresh(true),40)});window.addEventListener('dozaks:database-ready',()=>refresh(true));setTimeout(()=>refresh(true),80)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
