@@ -1,5 +1,5 @@
-const CACHE_NAME = 'dozaks-shell-v13';
-const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/db-client.js', '/drug-card-sync.js', '/ux.js', '/product-catalog.js', '/atc-catalog.js', '/contraindications-ui.js', '/clinical-workbench.js', '/clinical-workbench-runtime.js', '/formula-engine.js'];
+const CACHE_NAME = 'dozaks-shell-v14-mega-search';
+const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/db-client.js', '/drug-card-sync.js', '/ux.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -32,6 +32,18 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  if (/\.(?:js|css)$/.test(url.pathname)) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+        .then((response) => {
+          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
     );
     return;
   }
