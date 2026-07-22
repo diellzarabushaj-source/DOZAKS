@@ -30,17 +30,20 @@ jobs:
           )
 
           base=''
+          : > diagnostics.txt
           for candidate in "${candidates[@]}"; do
-            echo "Checking $candidate"
+            echo "Checking $candidate" | tee -a diagnostics.txt
             status="$(curl --silent --show-error --location --max-time 25 \
               --dump-header candidate-headers.txt \
               --output candidate-body.txt \
               --write-out '%{http_code}' \
               "$candidate/api/product-catalog?mode=health" || true)"
             content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {value=$0} END{sub(/^[^:]*:[[:space:]]*/, "", value); gsub(/\r/, "", value); print value}' candidate-headers.txt)"
-            echo "HTTP $status · Content-Type: ${content_type:-unknown}"
-            head -c 500 candidate-body.txt || true
-            echo
+            echo "HTTP $status · Content-Type: ${content_type:-unknown}" | tee -a diagnostics.txt
+            cat candidate-headers.txt >> diagnostics.txt || true
+            echo '--- body ---' >> diagnostics.txt
+            cat candidate-body.txt >> diagnostics.txt || true
+            echo -e '\n--- end ---' >> diagnostics.txt
 
             if [ "$status" = '200' ] && python - <<'PY'
           import json
@@ -61,21 +64,28 @@ jobs:
           done
 
           if [ -z "$base" ]; then
-            echo 'No Vercel production domain returned a valid Neon health response.'
+            echo 'No Vercel production domain returned a valid Neon health response.' | tee -a diagnostics.txt
             exit 1
           fi
 
-          echo "Using production domain: $base"
+          echo "Using production domain: $base" | tee -a diagnostics.txt
 
           request_json() {
             local url="$1"
             local output="$2"
             local status
             status="$(curl --silent --show-error --location --max-time 25 \
+              --dump-header "${output}.headers" \
               --output "$output" --write-out '%{http_code}' "$url" || true)"
-            if [ "$status" != '200' ]; then
-              echo "HTTP $status from $url"
+            {
+              echo "URL: $url"
+              echo "HTTP: $status"
+              cat "${output}.headers" 2>/dev/null || true
+              echo '--- body ---'
               cat "$output" 2>/dev/null || true
+              echo -e '\n--- end ---'
+            } >> diagnostics.txt
+            if [ "$status" != '200' ]; then
               return 1
             fi
             python -m json.tool "$output" >/dev/null
@@ -115,3 +125,20 @@ jobs:
               'firstProduct': products[0].get('trade_name') if products else None,
           }, ensure_ascii=False))
           PY
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-health-diagnostics
+          path: |
+            diagnostics.txt
+            candidate-headers.txt
+            candidate-body.txt
+            catalog-health.json
+            clinical-health.json
+            clinical-health.json.headers
+            search.json
+            search.json.headers
+          if-no-files-found: warn
+          retention-days: 1
