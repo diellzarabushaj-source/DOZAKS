@@ -10,6 +10,7 @@
     { "src": "ux.js", "use": "@vercel/static" },
     { "src": "drug-card-sync.js", "use": "@vercel/static" },
     { "src": "product-catalog.js", "use": "@vercel/static" },
+    { "src": "atc-catalog.js", "use": "@vercel/static" },
     { "src": "clinical-workbench.js", "use": "@vercel/static" },
     { "src": "clinical-workbench-runtime.js", "use": "@vercel/static" },
     { "src": "formula-engine.js", "use": "@vercel/static" },
