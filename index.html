@@ -70,13 +70,13 @@
           <div class="hero-copy">
             <span class="hero-eyebrow">KËRKIM UNIVERSAL</span>
             <h2 id="searchTitle">Çfarë të duhet tani?</h2>
-            <p>Shkruaj barin, emrin tregtar, diagnozën ose simptomën. Rezultati më i përshtatshëm shfaqet i pari.</p>
+            <p>Shkruaj barin, emrin tregtar, substancën aktive, ATC-në, diagnozën ose simptomën. Rezultati më i përshtatshëm shfaqet i pari.</p>
           </div>
 
           <div class="search-row">
             <form class="search-box" id="searchForm" role="search">
               <span class="search-icon" aria-hidden="true">⌕</span>
-              <input id="searchInput" type="search" placeholder="P.sh. amoxicillin, Augmentin, pneumoni, dhimbje fyti…" autocomplete="off" aria-label="Kërko në DozaKS" aria-controls="suggestions" />
+              <input id="searchInput" type="search" placeholder="P.sh. amoxicillin, Augmentin, J01CA04, pneumoni…" autocomplete="off" aria-label="Kërko në DozaKS" aria-controls="suggestions" />
               <kbd class="shortcut-hint">Ctrl K</kbd>
               <button class="clear-search" id="clearSearch" type="button" aria-label="Pastro kërkimin">×</button>
               <div class="suggestions" id="suggestions" role="listbox" aria-label="Rezultatet e kërkimit"></div>
@@ -207,6 +207,8 @@
   <script src="app.js" defer></script>
   <script src="db-client.js" defer></script>
   <script src="ux.js" defer></script>
+  <script src="drug-card-sync.js" defer></script>
   <script src="clinical-workbench.js" defer></script>
+  <script src="formula-engine.js" defer></script>
 </body>
 </html>
