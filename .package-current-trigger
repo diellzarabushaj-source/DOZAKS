@@ -1,1 +1,1 @@
-Trigger live product catalog verification after environment repair.
+Trigger controlled Netlify production deploy from current main.
