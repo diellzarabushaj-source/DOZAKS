@@ -1,1 +1,1 @@
-Trigger a fresh Vercel production deployment from the latest main branch after configuring DATABASE_URL.
+Deploy the complete current main branch to Vercel production: Neon connection, resilient database health, enriched medicine cards, smart search API, mega smart search UI, professional filters, and cache refresh. Deployment trigger: 2026-07-22 final combined release.
