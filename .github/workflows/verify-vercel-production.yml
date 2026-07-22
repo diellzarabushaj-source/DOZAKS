@@ -1,0 +1,91 @@
+name: Verify Vercel production
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel deployment
+        run: sleep 45
+
+      - name: Verify public Vercel APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidates=(
+            'https://dozaks.vercel.app'
+            'https://dozaks-diellzarabushaj-2665s-projects.vercel.app'
+          )
+
+          base=''
+          for candidate in "${candidates[@]}"; do
+            echo "Checking $candidate"
+            status="$(curl --silent --show-error --location --max-time 30 \
+              --dump-header headers.txt \
+              --output body.txt \
+              --write-out '%{http_code}' \
+              "$candidate/api/product-catalog?mode=health" || true)"
+            content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {v=$0} END{sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/\r/, "", v); print v}' headers.txt)"
+            echo "HTTP $status · ${content_type:-unknown}"
+            head -c 400 body.txt || true
+            echo
+
+            if [ "$status" = '200' ] && python - <<'PY'
+          import json
+          try:
+              with open('body.txt', encoding='utf-8') as fh:
+                  data = json.load(fh)
+              assert data.get('ok') is True
+              assert data.get('database') == 'neon'
+              assert data.get('hosting') == 'vercel'
+          except Exception:
+              raise SystemExit(1)
+          PY
+            then
+              base="$candidate"
+              cp body.txt catalog-health.json
+              break
+            fi
+          done
+
+          test -n "$base"
+          echo "Using $base"
+
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$base/api/clinical-data?mode=health" > clinical-health.json
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$base/api/product-catalog?q=MERO&limit=5" > search.json
+
+          python - <<'PY'
+          import json
+
+          with open('catalog-health.json', encoding='utf-8') as fh:
+              catalog = json.load(fh)
+          with open('clinical-health.json', encoding='utf-8') as fh:
+              clinical = json.load(fh)
+          with open('search.json', encoding='utf-8') as fh:
+              search = json.load(fh)
+
+          assert catalog.get('ok') is True, catalog
+          assert int(catalog.get('visible_products') or 0) >= 4000, catalog
+          assert clinical.get('ok') is True, clinical
+          assert clinical.get('database') == 'neon', clinical
+          products = search.get('productResults') or search.get('results') or []
+          drugs = search.get('drugResults') or []
+          assert products or drugs, search
+
+          print(json.dumps({
+              'catalogProducts': catalog.get('visible_products'),
+              'catalogDrugs': catalog.get('visible_drugs'),
+              'searchProducts': len(products),
+              'searchDrugs': len(drugs),
+              'firstProduct': products[0].get('trade_name') if products else None,
+          }, ensure_ascii=False))
+          PY
