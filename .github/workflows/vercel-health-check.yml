@@ -17,32 +17,72 @@ jobs:
     steps:
       - name: Wait for Vercel deployment
         shell: bash
-        run: sleep 35
+        run: sleep 20
 
       - name: Verify Vercel to Neon connection
         shell: bash
         run: |
           set -euo pipefail
-          base='https://dozaks-diellzarabushaj-2665s-projects.vercel.app'
 
-          request_with_retry() {
+          candidates=(
+            'https://dozaks.vercel.app'
+            'https://dozaks-diellzarabushaj-2665s-projects.vercel.app'
+          )
+
+          base=''
+          for candidate in "${candidates[@]}"; do
+            echo "Checking $candidate"
+            status="$(curl --silent --show-error --location --max-time 25 \
+              --dump-header candidate-headers.txt \
+              --output candidate-body.txt \
+              --write-out '%{http_code}' \
+              "$candidate/api/product-catalog?mode=health" || true)"
+            content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {value=$0} END{sub(/^[^:]*:[[:space:]]*/, "", value); gsub(/\r/, "", value); print value}' candidate-headers.txt)"
+            echo "HTTP $status · Content-Type: ${content_type:-unknown}"
+            head -c 500 candidate-body.txt || true
+            echo
+
+            if [ "$status" = '200' ] && python - <<'PY'
+          import json
+          try:
+              with open('candidate-body.txt', encoding='utf-8') as fh:
+                  data = json.load(fh)
+              assert data.get('ok') is True
+              assert data.get('database') == 'neon'
+              assert data.get('hosting') == 'vercel'
+          except Exception:
+              raise SystemExit(1)
+          PY
+            then
+              base="$candidate"
+              cp candidate-body.txt catalog-health.json
+              break
+            fi
+          done
+
+          if [ -z "$base" ]; then
+            echo 'No Vercel production domain returned a valid Neon health response.'
+            exit 1
+          fi
+
+          echo "Using production domain: $base"
+
+          request_json() {
             local url="$1"
             local output="$2"
-            for attempt in 1 2 3 4 5 6; do
-              status="$(curl --silent --show-error --location --max-time 25 --output "$output" --write-out '%{http_code}' "$url" || true)"
-              if [ "$status" = '200' ]; then
-                return 0
-              fi
-              echo "Attempt $attempt returned HTTP $status"
+            local status
+            status="$(curl --silent --show-error --location --max-time 25 \
+              --output "$output" --write-out '%{http_code}' "$url" || true)"
+            if [ "$status" != '200' ]; then
+              echo "HTTP $status from $url"
               cat "$output" 2>/dev/null || true
-              sleep 15
-            done
-            return 1
+              return 1
+            fi
+            python -m json.tool "$output" >/dev/null
           }
 
-          request_with_retry "$base/api/product-catalog?mode=health" catalog-health.json
-          request_with_retry "$base/api/clinical-data?mode=health" clinical-health.json
-          request_with_retry "$base/api/product-catalog?q=MERO&limit=5" search.json
+          request_json "$base/api/clinical-data?mode=health" clinical-health.json
+          request_json "$base/api/product-catalog?q=MERO&limit=5" search.json
 
           python - <<'PY'
           import json
