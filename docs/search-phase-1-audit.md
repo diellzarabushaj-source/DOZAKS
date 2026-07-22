@@ -67,10 +67,20 @@ The current `/api/smart-search` transaction runs all three queries for a normal 
 - Never log the database connection string or secrets.
 - Keep instrumentation on the audit branch until verified.
 
+## Implemented on the audit branch
+
+- Added `api/_search-observability.js` for request IDs, database timing, total API timing and structured JSON logs.
+- Added response headers `x-dozaks-request-id`, `x-dozaks-db-ms`, `x-dozaks-total-ms` and `Server-Timing`.
+- Added optional Sentry exception capture. It activates only when `SENTRY_DSN` exists; no secret is committed to GitHub.
+- Added `search-audit-client.js` to capture browser-side resource duration without recording the search text.
+- Added safe result metadata only: query length, active filter count, limits and result counts.
+- OpenAI is intentionally not part of this deterministic latency audit; no OpenAI key or AI request is needed for Phase 1.
+
 ## Phase 1 exit criteria
 
 - One documented source map of all search listeners.
 - Baseline database timings recorded.
 - Vercel/Sentry-compatible structured timing logs added on the audit branch.
+- Preview deployment verified with the five test queries.
 - No production database mutation.
 - No Sanity, A–Z or secondary UI work started.
